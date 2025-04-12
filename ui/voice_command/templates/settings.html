@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paramètres - Le Vieux Moulin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/font-sizes/' + font_size + '.css') }}">
+    {% if high_contrast %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/high-contrast.css') }}">
+    {% endif %}
+</head>
+<body class="bg-kitchen">
+    <div class="container-fluid p-0 vh-100 d-flex flex-column">
+        <!-- Header -->
+        <header class="p-3 bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1>Paramètres</h1>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-light">
+                    <i class="bi bi-arrow-left"></i> Retour
+                </a>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow-1 p-3 overflow-auto">
+            <div class="bg-white rounded shadow p-3 mb-4">
+                <h5 class="mb-3">Paramètres d'Interface</h5>
+                
+                <form id="settingsForm">
+                    <!-- Thème -->
+                    <div class="mb-3">
+                        <label for="theme" class="form-label">Thème</label>
+                        <select class="form-select" id="theme" name="theme">
+                            <option value="kitchen" {{ 'selected' if theme == 'kitchen' else '' }}>Cuisine</option>
+                            <option value="dark" {{ 'selected' if theme == 'dark' else '' }}>Sombre</option>
+                            <option value="light" {{ 'selected' if theme == 'light' else '' }}>Clair</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Taille de police -->
+                    <div class="mb-3">
+                        <label for="fontSize" class="form-label">Taille de Police</label>
+                        <select class="form-select" id="fontSize" name="font_size">
+                            <option value="small" {{ 'selected' if font_size == 'small' else '' }}>Petite</option>
+                            <option value="medium" {{ 'selected' if font_size == 'medium' else '' }}>Moyenne</option>
+                            <option value="large" {{ 'selected' if font_size == 'large' else '' }}>Grande</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Contraste élevé -->
+                    <div class="mb-3 form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="highContrast" name="high_contrast" {{ 'checked' if high_contrast else '' }}>
+                        <label class="form-check-label" for="highContrast">Mode contraste élevé</label>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h5 class="mb-3">Paramètres de Retour</h5>
+                    
+                    <!-- Retour audio -->
+                    <div class="mb-3 form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="audioFeedback" name="audio_feedback" {{ 'checked' if config.get("ui.feedback.audio", True) else '' }}>
+                        <label class="form-check-label" for="audioFeedback">Retour audio</label>
+                    </div>
+                    
+                    <!-- Retour visuel -->
+                    <div class="mb-3 form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="visualFeedback" name="visual_feedback" {{ 'checked' if config.get("ui.feedback.visual", True) else '' }}>
+                        <label class="form-check-label" for="visualFeedback">Retour visuel</label>
+                    </div>
+                    
+                    <!-- Retour haptique -->
+                    <div class="mb-3 form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="hapticFeedback" name="haptic_feedback" {{ 'checked' if config.get("ui.feedback.haptic", False) else '' }}>
+                        <label class="form-check-label" for="hapticFeedback">Vibration (si disponible)</label>
+                    </div>
+                    
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+                        <button type="button" class="btn btn-outline-secondary" id="restoreDefaults">Restaurer les paramètres par défaut</button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="bg-white rounded shadow p-3 mb-4">
+                <h5 class="mb-3">Informations du Système</h5>
+                
+                <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Identifiant de l'appareil
+                        <span class="badge bg-primary">{{ config.get("device_id", "tablette_unknown") }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Emplacement
+                        <span class="badge bg-info">{{ config.get("location", "cuisine") }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Langue principale
+                        <span class="badge bg-secondary">{{ config.get("language", "fr-FR") }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Version du logiciel
+                        <span class="badge bg-dark">1.0.0</span>
+                    </li>
+                </ul>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="p-3 bg-dark text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <span>Le Vieux Moulin</span>
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <i class="bi bi-mic-fill"></i> Retour à la Commande Vocale
+                </a>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Gestionnaire de soumission du formulaire
+            document.getElementById('settingsForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Collecter les données du formulaire
+                const formData = {
+                    theme: document.getElementById('theme').value,
+                    font_size: document.getElementById('fontSize').value,
+                    high_contrast: document.getElementById('highContrast').checked,
+                    audio_feedback: document.getElementById('audioFeedback').checked,
+                    visual_feedback: document.getElementById('visualFeedback').checked,
+                    haptic_feedback: document.getElementById('hapticFeedback').checked
+                };
+                
+                // Envoyer les données au serveur
+                fetch('/api/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Afficher un message de succès
+                        showToast('Paramètres enregistrés avec succès', 'success');
+                        
+                        // Recharger la page après un court délai
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        showToast('Erreur lors de l\'enregistrement des paramètres: ' + (data.error || 'Erreur inconnue'), 'error');
+                    }
+                })
+                .catch(error => {
+                    showToast('Erreur de communication avec le serveur', 'error');
+                    console.error('Error:', error);
+                });
+            });
+            
+            // Gestionnaire pour restaurer les paramètres par défaut
+            document.getElementById('restoreDefaults').addEventListener('click', function() {
+                if (confirm('Êtes-vous sûr de vouloir restaurer les paramètres par défaut ?')) {
+                    // Réinitialiser le formulaire avec les valeurs par défaut
+                    document.getElementById('theme').value = 'kitchen';
+                    document.getElementById('fontSize').value = 'medium';
+                    document.getElementById('highContrast').checked = false;
+                    document.getElementById('audioFeedback').checked = true;
+                    document.getElementById('visualFeedback').checked = true;
+                    document.getElementById('hapticFeedback').checked = false;
+                    
+                    // Soumettre le formulaire
+                    document.getElementById('settingsForm').dispatchEvent(new Event('submit'));
+                }
+            });
+        });
+        
+        // Fonction pour afficher un toast
+        function showToast(message, type) {
+            // Créer le toast
+            const toastEl = document.createElement('div');
+            toastEl.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0`;
+            toastEl.setAttribute('role', 'alert');
+            toastEl.setAttribute('aria-live', 'assertive');
+            toastEl.setAttribute('aria-atomic', 'true');
+            
+            toastEl.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+            
+            // Ajouter au container
+            const toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+            toastContainer.appendChild(toastEl);
+            document.body.appendChild(toastContainer);
+            
+            // Initialiser et afficher
+            const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+            toast.show();
+            
+            // Nettoyer après fermeture
+            toastEl.addEventListener('hidden.bs.toast', function () {
+                toastContainer.remove();
+            });
+        }
+    </script>
+</body>
+</html>
