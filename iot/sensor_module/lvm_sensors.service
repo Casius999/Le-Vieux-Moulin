@@ -1,0 +1,18 @@
+[Unit]
+Description=Le Vieux Moulin - Service de capteurs IoT
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/Le-Vieux-Moulin/iot/sensor_module
+ExecStart=/usr/bin/python3 main.py --config /etc/lvm_sensors/config.json
+Restart=on-failure
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=lvm_sensors
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
