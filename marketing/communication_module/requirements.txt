@@ -1,0 +1,78 @@
+# API et Framework Web
+flask==2.0.2
+flask-restful==0.3.9
+flask-cors==3.0.10
+gunicorn==20.1.0
+fastapi==0.75.0
+uvicorn==0.17.6
+
+# Communication
+requests==2.27.1
+aiohttp==3.8.1
+websockets==10.2
+
+# Réseaux sociaux
+facebook-sdk==4.0.0
+instagrapi==1.16.30
+tweepy==4.8.0
+linkedin-api==2.0.0a5
+
+# Envoi d'emails
+sendgrid==6.9.7
+mailjet-rest==1.3.4
+
+# Envoi de SMS
+twilio==7.8.0
+ovh==1.0.0
+
+# File d'attente et tâches
+celery==5.2.7
+redis==4.3.1
+pika==1.2.1
+schedule==1.1.0
+
+# Base de données et ORM
+sqlalchemy==1.4.36
+psycopg2-binary==2.9.3
+alembic==1.7.7
+
+# Validation et sérialisation
+pydantic==1.9.1
+marshmallow==3.15.0
+jsonschema==4.4.0
+
+# Templating et génération de contenu
+jinja2==3.0.3
+markdown==3.3.6
+pillow==9.0.1
+python-slugify==6.1.1
+handlebars.py==0.8.0
+
+# Sécurité
+python-jose==3.3.0
+passlib==1.7.4
+cryptography==36.0.2
+oauthlib==3.2.0
+python-dotenv==0.20.0
+
+# Testing
+pytest==7.1.2
+pytest-cov==3.0.0
+responses==0.20.0
+freezegun==1.2.1
+
+# Monitoring et logging
+sentry-sdk==1.5.12
+prometheus-client==0.14.1
+structlog==22.1.0
+python-json-logger==2.0.2
+
+# Utilitaires
+python-dateutil==2.8.2
+pytz==2022.1
+tenacity==8.0.1
+backoff==2.1.2
+
+# Documentation
+swagger-ui-bundle==0.0.9
+apispec==5.2.2
