@@ -1,0 +1,46 @@
+{
+  "update_interval": 3600,
+  "daily_suggestions_count": 3,
+  "provider_cache_timeout": 1800,
+  "promotion_threshold": 15,
+  "providers": ["metro", "transgourmet", "pomona"],
+  "recipe_categories": ["pizza", "plat_principal", "dessert"],
+  "local_coordinates": {
+    "latitude": 45.3642,
+    "longitude": -1.0592,
+    "locality": "Vensac"
+  },
+  "api_endpoints": {
+    "central_server": "http://localhost:8000/api",
+    "ml_service": "http://localhost:5000/api/predictions"
+  },
+  "display_api_url": "http://localhost:8080/displays",
+  "website_api_url": "https://levieuxmoulin.fr/api",
+  "website_api_key": "your_api_key_here",
+  "social_media": {
+    "facebook": {
+      "access_token": "your_access_token_here"
+    },
+    "instagram": {
+      "access_token": "your_access_token_here"
+    },
+    "twitter": {
+      "consumer_key": "your_consumer_key_here",
+      "consumer_secret": "your_consumer_secret_here",
+      "access_token": "your_access_token_here",
+      "access_token_secret": "your_access_token_secret_here"
+    }
+  },
+  "email_service": {
+    "smtp_server": "smtp.example.com",
+    "smtp_port": 587,
+    "username": "noreply@levieuxmoulin.fr",
+    "password": "your_password_here",
+    "from_email": "promotions@levieuxmoulin.fr"
+  },
+  "logging": {
+    "level": "INFO",
+    "file_path": "/var/log/recipe_suggestion/",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  }
+}
