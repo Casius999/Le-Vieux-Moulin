@@ -1,0 +1,156 @@
+/* Styles principaux pour le module de commande vocale */
+
+/* Variables globales */
+:root {
+    --primary-color: #2c3e50;
+    --secondary-color: #34495e;
+    --accent-color: #e67e22;
+    --text-color: #333;
+    --light-text: #fff;
+    --border-radius: 8px;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Styles de base */
+body {
+    font-family: 'Roboto', sans-serif;
+    color: var(--text-color);
+    overflow: hidden;
+}
+
+.bg-kitchen {
+    background-color: #f5f5f5;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9));
+    background-size: cover;
+    background-position: center;
+}
+
+/* Zones de contenu */
+.status-area,
+.recognition-area,
+.command-area {
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    transition: all 0.3s ease;
+}
+
+.voice-text {
+    min-height: 80px;
+    background-color: #f8f9fa;
+    border-radius: var(--border-radius);
+    transition: background-color 0.3s ease;
+}
+
+.voice-text.active {
+    background-color: #e8f4f8;
+    border-color: #4dabf7;
+}
+
+.command-display {
+    min-height: 60px;
+    background-color: #f8f9fa;
+}
+
+.command-result {
+    background-color: #f0f7ff;
+    border-color: #91c5ff;
+}
+
+/* Jauge de confiance */
+.confidence-meter {
+    flex-grow: 1;
+}
+
+.confidence-meter .progress {
+    height: 12px;
+    border-radius: 6px;
+}
+
+/* Bouton d'écoute */
+.voice-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.voice-controls .btn {
+    width: 64px;
+    height: 64px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.voice-controls .btn i {
+    font-size: 24px;
+}
+
+.voice-controls .btn:hover {
+    transform: scale(1.05);
+}
+
+.voice-controls .btn:active {
+    transform: scale(0.95);
+}
+
+/* Animation pour l'écoute active */
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+
+.btn-danger.pulse {
+    animation: pulse 1.5s infinite;
+}
+
+/* Animation pour les mises à jour */
+@keyframes highlight {
+    0% { background-color: rgba(255, 193, 7, 0.3); }
+    100% { background-color: transparent; }
+}
+
+.highlight {
+    animation: highlight 1.5s ease-in-out;
+}
+
+/* Mode veille */
+.screen-sleep {
+    opacity: 0.3;
+    transition: opacity 1s ease;
+}
+
+.screen-wake {
+    opacity: 1;
+    transition: opacity 0.5s ease;
+}
+
+/* Styles responsive */
+@media (max-width: 768px) {
+    header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .voice-controls .btn {
+        width: 56px;
+        height: 56px;
+    }
+    
+    .voice-controls .btn i {
+        font-size: 20px;
+    }
+}
+
+/* États de commande */
+.command-status-success {
+    color: #28a745;
+}
+
+.command-status-error {
+    color: #dc3545;
+}
+
+.command-status-pending {
+    color: #ffc107;
+}

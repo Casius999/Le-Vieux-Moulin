@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Le Vieux Moulin - Commande Vocale</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/themes/{{ theme }}.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/font-sizes/{{ font_size }}.css') }}">
+    {% if high_contrast %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/high-contrast.css') }}">
+    {% endif %}
+</head>
+<body class="bg-kitchen">
+    <div class="container-fluid p-0 vh-100 d-flex flex-column">
+        <!-- Header -->
+        <header class="p-3 bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1>Le Vieux Moulin</h1>
+                <div class="d-flex">
+                    <span class="badge bg-secondary me-2">{{ location|capitalize }}</span>
+                    <span class="device-id small">{{ device_id }}</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow-1 d-flex flex-column p-3 pt-4">
+            <!-- Status Area -->
+            <div class="status-area mb-4 p-3 bg-light rounded shadow-sm">
+                <h5>Statut</h5>
+                <div id="status" class="alert alert-info">Prêt pour les commandes vocales</div>
+            </div>
+
+            <!-- Recognition Area -->
+            <div class="recognition-area mb-4 p-3 bg-white rounded shadow">
+                <h5>Reconnaissance Vocale</h5>
+                <div id="recognizedText" class="p-3 mb-3 border rounded voice-text">
+                    <em>Appuyez sur le bouton pour parler...</em>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div class="confidence-meter me-3">
+                        <div class="progress">
+                            <div id="confidenceBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                        </div>
+                    </div>
+                    <span id="confidenceText" class="small text-muted">Confiance</span>
+                </div>
+            </div>
+
+            <!-- Command Area -->
+            <div class="command-area mb-4 p-3 bg-white rounded shadow">
+                <h5>Commande Détectée</h5>
+                <div id="commandDisplay" class="p-3 border rounded command-display">
+                    <em>Aucune commande détectée</em>
+                </div>
+                <div id="commandResult" class="mt-3 p-3 border rounded d-none command-result">
+                    <!-- Résultat de la commande ici -->
+                </div>
+            </div>
+
+            <!-- Confirmation Modal -->
+            <div class="modal fade" id="confirmationModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title">Confirmation de la commande</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Voulez-vous exécuter cette commande ?</p>
+                            <div id="confirmationCommand" class="p-2 mb-3 border rounded bg-light"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancelCommand">Annuler</button>
+                            <button type="button" class="btn btn-primary" id="confirmCommand">Confirmer</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Spacer -->
+            <div class="flex-grow-1"></div>
+
+            <!-- History Button -->
+            <div class="text-center mb-3">
+                <a href="{{ url_for('history') }}" class="btn btn-outline-secondary">Historique des commandes</a>
+            </div>
+        </main>
+
+        <!-- Footer Controls -->
+        <footer class="p-3 bg-dark text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <a href="{{ url_for('settings') }}" class="btn btn-sm btn-outline-light">
+                    <i class="bi bi-gear-fill"></i> Paramètres
+                </a>
+                
+                <div class="voice-controls">
+                    <button id="listenButton" class="btn btn-lg btn-success rounded-circle">
+                        <i class="bi bi-mic-fill"></i>
+                    </button>
+                </div>
+                
+                <button id="exitButton" class="btn btn-sm btn-outline-light">
+                    <i class="bi bi-box-arrow-right"></i> Quitter
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/howler.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    
+    <script>
+        // Configuration spécifique à cette page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialisation de l'application
+            initApp();
+            
+            // Gestionnaire pour le bouton d'écoute
+            document.getElementById('listenButton').addEventListener('click', function() {
+                const isListening = this.classList.contains('btn-danger');
+                
+                if (isListening) {
+                    // Arrêter l'écoute
+                    this.classList.remove('btn-danger');
+                    this.classList.add('btn-success');
+                    this.querySelector('i').classList.remove('bi-mic-mute-fill');
+                    this.querySelector('i').classList.add('bi-mic-fill');
+                    socket.emit('stop_listening');
+                } else {
+                    // Démarrer l'écoute
+                    this.classList.remove('btn-success');
+                    this.classList.add('btn-danger');
+                    this.querySelector('i').classList.remove('bi-mic-fill');
+                    this.querySelector('i').classList.add('bi-mic-mute-fill');
+                    socket.emit('start_listening');
+                }
+            });
+            
+            // Gestionnaire pour le bouton de sortie
+            document.getElementById('exitButton').addEventListener('click', function() {
+                if (confirm('Voulez-vous vraiment quitter l\'application ?')) {
+                    socket.emit('exit_app');
+                }
+            });
+            
+            // Gestionnaires pour la confirmation de commande
+            document.getElementById('confirmCommand').addEventListener('click', function() {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
+                socket.emit('confirmation_response', {
+                    command: currentCommand.command,
+                    params: currentCommand.params,
+                    confirmed: true
+                });
+                modal.hide();
+            });
+            
+            document.getElementById('cancelCommand').addEventListener('click', function() {
+                socket.emit('confirmation_response', {
+                    command: currentCommand.command,
+                    params: currentCommand.params,
+                    confirmed: false
+                });
+            });
+        });
+    </script>
+</body>
+</html>

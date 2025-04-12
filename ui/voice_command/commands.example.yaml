@@ -1,0 +1,99 @@
+# Configuration des commandes vocales - Le Vieux Moulin
+# Ce fichier définit les modèles de commandes vocales reconnues par le système
+
+# Commandes liées aux stocks
+stock:
+  # Vérification du niveau de stock
+  check:
+    patterns:
+      - "vérifier stock {ingredient}"
+      - "niveau de {ingredient}"
+      - "combien de {ingredient} reste"
+      - "stock de {ingredient}"
+    default_params:
+      unit: "kg"
+  
+  # Signalement d'un niveau critique (non détecté par capteurs)
+  alert:
+    patterns:
+      - "niveau critique {ingredient}"
+      - "alerte stock {ingredient}"
+      - "plus de {ingredient}"
+      - "{ingredient} presque vide"
+    default_params:
+      priority: "normal"
+  
+  # Demande de commande d'ingrédient
+  order:
+    patterns:
+      - "commander {ingredient}"
+      - "passer commande {ingredient}"
+      - "besoin de {ingredient}"
+      - "renouveler stock {ingredient}"
+    default_params:
+      quantity: null  # Quantité déterminée automatiquement
+      priority: "normal"
+
+# Commandes liées aux recettes
+recipe:
+  # Affichage d'une recette complète
+  show:
+    patterns:
+      - "recette {dish}"
+      - "comment préparer {dish}"
+      - "préparation {dish}"
+      - "montrer recette {dish}"
+    default_params:
+      detail_level: "full"
+  
+  # Liste des ingrédients pour une recette
+  ingredients:
+    patterns:
+      - "ingrédients {dish}"
+      - "ingrédients pour {dish}"
+      - "quoi dans {dish}"
+      - "composition {dish}"
+    default_params:
+      with_quantities: true
+
+# Commandes liées aux équipements
+equipment:
+  # Vérification de l'état d'un équipement
+  status:
+    patterns:
+      - "état {equipment}"
+      - "vérifier {equipment}"
+      - "statut {equipment}"
+      - "comment va {equipment}"
+    default_params: {}
+  
+  # Signalement d'un problème sur un équipement
+  maintenance:
+    patterns:
+      - "maintenance {equipment}"
+      - "problème avec {equipment}"
+      - "{equipment} ne fonctionne pas"
+      - "réparer {equipment}"
+    default_params:
+      priority: "high"
+
+# Commandes globales
+system:
+  # Requête d'aide
+  help:
+    patterns:
+      - "aide"
+      - "quelles commandes"
+      - "que peux tu faire"
+      - "commandes disponibles"
+    default_params:
+      topic: "general"
+  
+  # Réinitialisation ou retour en arrière
+  cancel:
+    patterns:
+      - "annuler"
+      - "oublier ça"
+      - "retour"
+      - "recommencer"
+    default_params: {}
