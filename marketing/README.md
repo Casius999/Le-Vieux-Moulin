@@ -7,7 +7,7 @@ Ce répertoire contient l'ensemble des composants du module marketing automatis�
 - **/social_media/** - Gestion des réseaux sociaux et publications automatisées
 - **/campaign_manager/** - Planification et exécution des campagnes publicitaires
 - **/notification/** - Système de notifications clients (email, SMS)
-- **/recipe_suggestion/** - Génération automatisée de suggestions culinaires
+- **/recipe_suggestion/** - **Module fonctionnel** - Suggestion de recettes et promotions fournisseurs
 - **/analytics/** - Analyse et reporting des performances marketing
 - **/content_generator/** - Outils de génération de contenu assisté par IA
 
@@ -222,56 +222,42 @@ const birthdayOfferTemplate = {
 
 Ce module utilise l'intelligence artificielle pour générer des suggestions de plats spéciaux en fonction des stocks disponibles, des tendances culinaires et des préférences clients.
 
-#### Critères d'Analyse
-- Niveaux de stock actuels
-- Ingrédients à écouler en priorité
-- Tendances gastronomiques saisonnières
-- Historique des ventes
-- Événements locaux
+#### ✅ Statut: Fonctionnel
 
-#### Fonctionnement
-```javascript
-// Exemple de génération de suggestion de plat
-const { RecipeSuggester } = require('./recipe_suggestion/suggester');
+Le module de suggestion de recettes est désormais complètement opérationnel et prêt à l'emploi. Il permet d'analyser les promotions fournisseurs et de générer automatiquement des suggestions de recettes optimisées.
 
-// Initialiser le suggester
-const recipeSuggester = new RecipeSuggester({
-  database_path: './data/recipes.db',
-  ml_model_path: './models/recipe_recommendation.h5'
-});
+#### Fonctionnalités Principales
+- Analyse des promotions fournisseurs en temps réel
+- Détection des tendances locales et préférences clients
+- Génération de suggestions de recettes (pizza du jour, plat spécial)
+- Création et publication automatique de promotions associées
+- Intégration avec les systèmes de vente et de stock
 
-// Obtenir des suggestions basées sur le contexte actuel
-async function getSuggestionsForToday() {
-  // Récupérer l'inventaire actuel
-  const currentInventory = await inventoryManager.getCurrentLevels();
-  
-  // Identifier les ingrédients à écouler en priorité
-  const priorityIngredients = currentInventory
-    .filter(item => item.days_until_expiry < 3 && item.quantity > item.min_level)
-    .map(item => item.name);
-  
-  // Obtenir les tendances actuelles
-  const currentTrends = await trendAnalyzer.getCurrentTrends({
-    location: 'Vensac',
-    radius: 50, // km
-    season: getCurrentSeason()
-  });
-  
-  // Générer des suggestions
-  const suggestions = await recipeSuggester.generateSuggestions({
-    priority_ingredients: priorityIngredients,
-    trends: currentTrends,
-    constraints: {
-      preparation_time_max: 30, // minutes
-      complexity_level_max: 3, // sur 5
-      cost_category: 'medium'
-    },
-    count: 3 // nombre de suggestions souhaitées
-  });
-  
-  return suggestions;
-}
+#### Intégration avec les autres composants
+- Utilise les données du module IA/ML pour améliorer les suggestions
+- Alimente le module de réseaux sociaux pour les publications
+- Fournit des données au système de menu et d'affichage
+
+#### Utilisation Python
+```python
+# Exemple d'utilisation du module de suggestion de recettes
+from recipe_suggestion.src.main import RecipeSuggestionService
+
+# Initialiser le service
+service = RecipeSuggestionService()
+
+# Générer des suggestions quotidiennes
+suggestions = service.generate_daily_suggestions()
+
+# Afficher les suggestions
+for i, suggestion in enumerate(suggestions, 1):
+    print(f"{i}. {suggestion['name']} ({suggestion['category']})")
+    print(f"   Prix: {suggestion['price']}€")
+    print(f"   Ingrédients principaux: {', '.join(suggestion['main_ingredients'])}")
+    print(f"   Promotion: {suggestion['promotion']['description']}\n")
 ```
+
+Pour plus de détails, consultez la [documentation du module](./recipe_suggestion/README.md).
 
 ### 5. Analytique Marketing
 
