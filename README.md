@@ -26,50 +26,65 @@ Ce dépôt contient l'intégralité du système de gestion intelligente dévelop
 
 ## Structure du Dépôt
 
-Le projet est organisé en plusieurs modules, chacun avec sa propre documentation détaillée :
+- **[ARCHITECTURE/](./ARCHITECTURE/)** : Schémas et diagrammes du système
+  - [system_architecture.svg](./ARCHITECTURE/system_architecture.svg) - Diagramme d'architecture global
+  - [architecture_description.md](./ARCHITECTURE/architecture_description.md) - Description de l'architecture
 
-- **[/ARCHITECTURE/](./ARCHITECTURE/)** : Schémas et diagrammes du système
-  - [`system_architecture.svg`](./ARCHITECTURE/system_architecture.svg) - Diagramme complet de l'architecture
-  - [`architecture_description.md`](./ARCHITECTURE/architecture_description.md) - Description détaillée de l'architecture
+- **[REQUIREMENTS.md](./REQUIREMENTS.md)** : Spécifications détaillées du projet
 
-- **[/docs/](./docs/)** : Documentation complète du projet
-  - Guides utilisateur, manuels d'exploitation, spécifications techniques
+- **[/docs/](./docs/)** : Documentation générale du projet
 
 - **[/iot/](./iot/)** : Module de gestion des capteurs IoT
-  - [/sensor_module/](./iot/sensor_module/) - Bacs avec cellules de charge, sonde friteuse, etc.
-  - Configuration et gestion des capteurs, passerelle IoT
+  - [/iot/sensor_module/](./iot/sensor_module/) - **Module fonctionnel** pour la gestion des capteurs
 
-- **[/ml/](./ml/)** : Modèles d'intelligence artificielle et d'analyse prédictive
-  - Prévisions des besoins, optimisation des stocks, suggestions de recettes
+- **Modules en cours de développement** :
+  - `/ml/` - Module d'intelligence artificielle et machine learning
+  - `/ui/` - Interfaces utilisateur (tablettes, dashboards)
+  - `/integration/` - Intégrations avec les systèmes externes
+  - `/marketing/` - Module marketing et communication automatisée
+  - `/accounting/` - Module de comptabilité avancé
 
-- **[/ui/](./ui/)** : Interface utilisateur
-  - Tablettes murales, module de commande vocale, tableaux de bord
+## État du Développement
 
-- **[/integration/](./integration/)** : Intégrations API externes
-  - Caisse enregistreuse, fournisseurs, système de réservation, CRM
+### ✅ Modules Fonctionnels
+- **Module IoT de capteurs** ([/iot/sensor_module/](./iot/sensor_module/)) :
+  - Gestion des cellules de charge pour les bacs d'ingrédients
+  - Surveillance du niveau et de la qualité d'huile des friteuses
+  - Transmission sécurisée des données avec mise en cache
+  - Documentation complète d'installation et d'utilisation
+  - Prêt pour le déploiement en production
 
-- **[/marketing/](./marketing/)** : Module marketing et communication
-  - Gestion réseaux sociaux, campagnes publicitaires, notifications automatisées
+### 🚧 Modules en Cours de Développement
+- **Module ML** : Modèles prédictifs pour la consommation et l'optimisation des stocks
+- **Interface Utilisateur** : Application sur tablette et commande vocale
+- **Intégrations API** : Connecteurs avec les systèmes externes
 
-- **[/accounting/](./accounting/)** : Module de comptabilité avancé
-  - Rapports exhaustifs, suivi financier temps réel, gestion TVA
+### 📅 Modules Planifiés
+- **Module Marketing** : Automatisation des campagnes et réseaux sociaux
+- **Module Comptabilité** : Génération de rapports financiers
 
-- **[/REQUIREMENTS.md](./REQUIREMENTS.md)** : Spécifications détaillées du projet
+## Guide pour les Développeurs
 
-## Architecture et Approche Technique
+Si vous reprenez ce projet pour la première fois, voici comment vous orienter :
 
-Le système est conçu selon les principes fondamentaux suivants :
+1. **Comprendre l'architecture** : Consultez d'abord [ARCHITECTURE/architecture_description.md](./ARCHITECTURE/architecture_description.md) pour une vue d'ensemble.
+
+2. **Consulter les spécifications** : [REQUIREMENTS.md](./REQUIREMENTS.md) détaille toutes les fonctionnalités attendues.
+
+3. **Module Capteurs IoT** : Le [module IoT](./iot/sensor_module/) est fonctionnel et documenté. Consultez son [README](./iot/sensor_module/README.md) pour comprendre l'implémentation.
+
+4. **Conventions de code** : Suivez les directives du fichier [CONTRIBUTING.md](./CONTRIBUTING.md) pour maintenir la cohérence du code.
+
+## Scalabilité
+
+Le système est conçu dès le départ pour être évolutif et permettre la duplication ou l'extension pour un deuxième établissement prévu cette année. L'architecture modulaire et granulaire facilite cette extension sans nécessiter de refonte majeure.
+
+## Approche Technique
 
 - **Modularité** : Chaque composant est indépendant et peut être développé, testé et mis à jour séparément
-- **Granularité** : Décomposition en micro-tâches dédiées pour une maintenance facilitée
-- **Évolutivité** : Architecture permettant la duplication ou l'extension pour un deuxième établissement prévu
+- **Granularité** : Décomposition en micro-tâches pour une maintenance facilitée
+- **Évolutivité** : Architecture permettant la duplication pour un nouvel établissement
 - **Sécurité** : Authentification forte, chiffrement des communications, protection des données
-
-Le système suit une architecture microservices modern, où :
-- Chaque service possède sa propre base de données ou son propre espace de stockage
-- Les services communiquent via des API RESTful ou des files de messages
-- Les interfaces utilisateur sont responsives et adaptées à différents appareils
-- L'infrastructure peut être déployée sur site ou dans le cloud
 
 ## Installation et Déploiement
 
@@ -83,52 +98,13 @@ Chaque module dispose de sa propre documentation d'installation. Pour un déploi
 6. Mettez en place les modules marketing et comptabilité
 7. Effectuez des tests d'intégration complets
 
-Pour des instructions détaillées, consultez le guide d'installation complet dans [/docs/guides/installation.md](./docs/README.md).
+Pour plus de détails, consultez les instructions spécifiques dans chaque module.
 
-## Multi-Établissements
+## Support et Contact
 
-Le système est conçu dès le départ pour être évolutif et permettre la duplication ou l'extension pour un deuxième établissement prévu cette année. L'architecture modulaire et granulaire facilite cette extension sans nécessiter de refonte majeure.
-
-Les caractéristiques multi-établissements comprennent :
-- Isolation des données par établissement
-- Partage des modèles d'IA avec paramètres spécifiques par établissement
-- Tableaux de bord consolidés ou par établissement
-- Comptabilité séparée avec possibilité de consolidation
-
-## Développement et Contribution
-
-### Prérequis de développement
-- Node.js 18+
-- Python 3.9+
-- Docker et Docker Compose
-- Clés d'API pour les services tiers
-
-### Mise en place de l'environnement de développement
-```bash
-# Cloner le dépôt
-git clone https://github.com/Casius999/Le-Vieux-Moulin.git
-cd Le-Vieux-Moulin
-
-# Installer les dépendances (à la racine)
-npm install
-
-# Lancer l'environnement de développement
-docker-compose up -d
-```
-
-### Standards de Code
-- ESLint/Prettier pour JavaScript/TypeScript
-- PEP 8 pour Python
-- Tests unitaires obligatoires
-- Revue de code requise pour toutes les Pull Requests
-
-## Statut du Projet
-
-Le projet est actuellement en phase de développement initial. Les spécifications détaillées sont finalisées, et l'architecture est définie. Le développement des différents modules se poursuit selon le calendrier prévu.
-
-## Licence
-
-Ce projet est propriétaire et confidentiel. Tous droits réservés.
+Pour toute question technique ou support :
+- Créez une issue sur le dépôt GitHub
+- Contactez l'équipe technique à support@levieuxmoulin.fr
 
 ---
 
