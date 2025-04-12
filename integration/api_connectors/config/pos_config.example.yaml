@@ -1,0 +1,74 @@
+# Configuration pour les connecteurs POS (Point of Sale/Caisse enregistreuse)
+
+# =====================
+# Configuration Lightspeed
+# =====================
+lightspeed:
+  api:
+    name: "Lightspeed Retail"
+    base_url: "https://api.lightspeedapp.com/API/"
+    version: "v1"
+    account_id: "YOUR_ACCOUNT_ID"  # ID de votre compte Lightspeed
+    default_headers:
+      Accept: "application/json"
+      Content-Type: "application/json"
+
+  auth:
+    method: "oauth2_authorization_code"
+    client_id: "YOUR_CLIENT_ID"
+    client_secret: "YOUR_CLIENT_SECRET"
+    redirect_uri: "https://levieuxmoulin.fr/oauth/callback"
+    authorization_url: "https://cloud.lightspeedapp.com/oauth/authorize.php"
+    token_url: "https://cloud.lightspeedapp.com/oauth/access_token.php"
+    scope: "employee:inventory employee:sales"
+    token_path: "/path/to/tokens/lightspeed_token.json"
+    use_pkce: true
+
+  connection:
+    timeout: 30  # secondes
+    max_retries: 3
+    retry_delay: 2  # secondes
+    pool_connections: 10
+    pool_maxsize: 10
+
+  rate_limit:
+    max_requests_per_minute: 60
+    adaptive: true
+    safety_factor: 0.8  # Utilise 80% de la limite disponible
+    max_burst: 10
+    max_delay: 60  # secondes
+
+# =====================
+# Configuration Square
+# =====================
+square:
+  api:
+    name: "Square"
+    base_url: "https://connect.squareup.com/"
+    version: "v2"
+    location_id: "YOUR_LOCATION_ID"  # ID de votre établissement Square
+    default_headers:
+      Accept: "application/json"
+      Content-Type: "application/json"
+
+  auth:
+    method: "oauth2_client_credentials"
+    client_id: "YOUR_CLIENT_ID"
+    client_secret: "YOUR_CLIENT_SECRET"
+    token_url: "https://connect.squareup.com/oauth2/token"
+    scope: "ITEMS READ_ORDERS ORDERS_WRITE PAYMENTS_READ INVENTORY_READ INVENTORY_WRITE"
+    token_path: "/path/to/tokens/square_token.json"
+
+  connection:
+    timeout: 20  # secondes
+    max_retries: 3
+    retry_delay: 1  # secondes
+    pool_connections: 10
+    pool_maxsize: 10
+
+  rate_limit:
+    max_requests_per_minute: 100
+    adaptive: true
+    safety_factor: 0.9  # Utilise 90% de la limite disponible
+    max_burst: 15
+    max_delay: 30  # secondes

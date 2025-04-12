@@ -1,0 +1,64 @@
+# Configuration pour les connecteurs de réservation
+
+# =====================
+# Configuration TheFork (LaFourchette)
+# =====================
+thefork:
+  api:
+    name: "TheFork"
+    base_url: "https://api.thefork.com/"
+    restaurant_id: "YOUR_RESTAURANT_ID"  # ID du restaurant sur TheFork
+    default_headers:
+      Accept: "application/json"
+      Content-Type: "application/json"
+
+  auth:
+    method: "oauth2_client_credentials"
+    client_id: "YOUR_CLIENT_ID"
+    client_secret: "YOUR_CLIENT_SECRET"
+    token_url: "https://api.thefork.com/oauth/token"
+    scope: "public_api reservations"
+    token_path: "/path/to/tokens/thefork_token.json"
+
+  connection:
+    timeout: 30  # secondes
+    max_retries: 3
+    retry_delay: 2  # secondes
+    pool_connections: 5
+    pool_maxsize: 10
+
+  rate_limit:
+    max_requests_per_minute: 120
+    adaptive: true
+    safety_factor: 0.8
+
+# =====================
+# Configuration OpenTable
+# =====================
+opentable:
+  api:
+    name: "OpenTable"
+    base_url: "https://api.opentable.com/"
+    restaurant_id: "YOUR_RESTAURANT_ID"  # ID du restaurant sur OpenTable
+    default_headers:
+      Accept: "application/json"
+      Content-Type: "application/json"
+
+  auth:
+    method: "oauth2_client_credentials"
+    client_id: "YOUR_CLIENT_ID"
+    client_secret: "YOUR_CLIENT_SECRET"
+    token_url: "https://oauth.opentable.com/v3/token"
+    scope: "reservations.read reservations.write availability.read availability.write"
+    token_path: "/path/to/tokens/opentable_token.json"
+
+  connection:
+    timeout: 20  # secondes
+    max_retries: 3
+    retry_delay: 2  # secondes
+    pool_connections: 5
+    pool_maxsize: 10
+
+  rate_limit:
+    max_requests_per_minute: 120
+    adaptive: true

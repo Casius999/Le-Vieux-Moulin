@@ -1,0 +1,89 @@
+# Configuration pour les connecteurs Fournisseurs
+
+# =====================
+# Configuration Metro
+# =====================
+metro:
+  api:
+    name: "Metro France"
+    base_url: "https://api.metro.fr/"
+    version: "v1"
+    client_number: "YOUR_CLIENT_NUMBER"  # Numéro client Metro
+    default_headers:
+      Accept: "application/json"
+      Content-Type: "application/json"
+
+  auth:
+    method: "api_key"
+    api_key: "YOUR_API_KEY"
+    header_name: "X-API-KEY"  # Nom de l'en-tête pour la clé API
+
+  connection:
+    timeout: 30  # secondes
+    max_retries: 3
+    retry_delay: 2  # secondes
+    pool_connections: 5
+    pool_maxsize: 10
+
+  rate_limit:
+    max_requests_per_minute: 120
+    max_burst: 20
+
+# =====================
+# Configuration Transgourmet
+# =====================
+transgourmet:
+  api:
+    name: "Transgourmet"
+    base_url: "https://api.transgourmet.fr/"
+    customer_id: "YOUR_CUSTOMER_ID"  # ID client Transgourmet
+    default_headers:
+      Accept: "application/json"
+      Content-Type: "application/json"
+
+  auth:
+    method: "oauth2_client_credentials"
+    client_id: "YOUR_CLIENT_ID"
+    client_secret: "YOUR_CLIENT_SECRET"
+    token_url: "https://api.transgourmet.fr/api/oauth/token"
+    token_path: "/path/to/tokens/transgourmet_token.json"
+
+  connection:
+    timeout: 30  # secondes
+    max_retries: 3
+    retry_delay: 2  # secondes
+    pool_connections: 5
+    pool_maxsize: 10
+
+  rate_limit:
+    max_requests_per_minute: 100
+    adaptive: true
+    safety_factor: 0.8
+
+# =====================
+# Configuration Pomona
+# =====================
+pomona:
+  api:
+    name: "Pomona"
+    base_url: "https://api.pomona.fr/"
+    establishment_code: "YOUR_ESTABLISHMENT_CODE"  # Code établissement Pomona
+    default_headers:
+      Accept: "application/json"
+      Content-Type: "application/json"
+
+  auth:
+    method: "basic_auth"
+    username: "YOUR_USERNAME"
+    password: "YOUR_PASSWORD"
+
+  connection:
+    timeout: 30  # secondes
+    max_retries: 3
+    retry_delay: 2  # secondes
+    pool_connections: 5
+    pool_maxsize: 10
+
+  rate_limit:
+    max_requests_per_minute: 90
+    adaptive: true

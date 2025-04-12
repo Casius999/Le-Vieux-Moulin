@@ -1,0 +1,66 @@
+# Configuration pour les connecteurs CRM
+
+# =====================
+# Configuration HubSpot
+# =====================
+hubspot:
+  api:
+    name: "HubSpot"
+    base_url: "https://api.hubapi.com/"
+    default_headers:
+      Accept: "application/json"
+      Content-Type: "application/json"
+
+  auth:
+    method: "oauth2_authorization_code"
+    client_id: "YOUR_CLIENT_ID"
+    client_secret: "YOUR_CLIENT_SECRET"
+    redirect_uri: "https://levieuxmoulin.fr/oauth/callback"
+    authorization_url: "https://app.hubspot.com/oauth/authorize"
+    token_url: "https://api.hubapi.com/oauth/v1/token"
+    scope: "crm.objects.contacts.read crm.objects.contacts.write crm.objects.deals.read crm.objects.deals.write"
+    token_path: "/path/to/tokens/hubspot_token.json"
+
+  connection:
+    timeout: 30  # secondes
+    max_retries: 3
+    retry_delay: 2  # secondes
+    pool_connections: 5
+    pool_maxsize: 10
+
+  rate_limit:
+    max_requests_per_minute: 90
+    adaptive: true
+    safety_factor: 0.8
+
+# =====================
+# Configuration Zoho CRM
+# =====================
+zoho:
+  api:
+    name: "Zoho CRM"
+    base_url: "https://www.zohoapis.eu/"  # Utilisez l'URL appropriée pour votre région
+    default_headers:
+      Accept: "application/json"
+      Content-Type: "application/json"
+
+  auth:
+    method: "oauth2_authorization_code"
+    client_id: "YOUR_CLIENT_ID"
+    client_secret: "YOUR_CLIENT_SECRET"
+    redirect_uri: "https://levieuxmoulin.fr/oauth/callback"
+    authorization_url: "https://accounts.zoho.eu/oauth/v2/auth"
+    token_url: "https://accounts.zoho.eu/oauth/v2/token"
+    scope: "ZohoCRM.modules.ALL"
+    token_path: "/path/to/tokens/zoho_token.json"
+
+  connection:
+    timeout: 30  # secondes
+    max_retries: 3
+    retry_delay: 2  # secondes
+    pool_connections: 5
+    pool_maxsize: 10
+
+  rate_limit:
+    max_requests_per_minute: 150
+    adaptive: true
