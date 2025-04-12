@@ -1,0 +1,154 @@
+{
+  "pizza": [
+    {
+      "name": "Margherita",
+      "ingredients": ["sauce tomate", "mozzarella", "basilic"],
+      "base_price": 10.0,
+      "category": "classique",
+      "popularity": 0.9,
+      "vegetarian": true,
+      "preparation_time": 15
+    },
+    {
+      "name": "Regina",
+      "ingredients": ["sauce tomate", "mozzarella", "jambon", "champignons"],
+      "base_price": 12.0,
+      "category": "classique",
+      "popularity": 0.85,
+      "vegetarian": false,
+      "preparation_time": 15
+    },
+    {
+      "name": "Quatre Fromages",
+      "ingredients": ["sauce tomate", "mozzarella", "gorgonzola", "parmesan", "chèvre"],
+      "base_price": 13.0,
+      "category": "spécialité",
+      "popularity": 0.75,
+      "vegetarian": true,
+      "preparation_time": 15
+    },
+    {
+      "name": "Végétarienne",
+      "ingredients": ["sauce tomate", "mozzarella", "poivrons", "champignons", "artichauts", "olives"],
+      "base_price": 12.5,
+      "category": "spécialité",
+      "popularity": 0.7,
+      "vegetarian": true,
+      "preparation_time": 18
+    },
+    {
+      "name": "Calzone",
+      "ingredients": ["sauce tomate", "mozzarella", "jambon", "champignons", "œuf"],
+      "base_price": 13.5,
+      "category": "spécialité",
+      "popularity": 0.6,
+      "vegetarian": false,
+      "preparation_time": 20
+    },
+    {
+      "name": "Méditerranéenne",
+      "ingredients": ["sauce tomate", "mozzarella", "tomates cerises", "olives", "feta", "roquette"],
+      "base_price": 14.0,
+      "category": "gourmet",
+      "popularity": 0.65,
+      "vegetarian": true,
+      "preparation_time": 18
+    }
+  ],
+  "plat_principal": [
+    {
+      "name": "Magret de Canard",
+      "ingredients": ["magret de canard", "miel", "vinaigre balsamique", "pommes de terre"],
+      "base_price": 18.0,
+      "category": "traditionnel",
+      "popularity": 0.8,
+      "vegetarian": false,
+      "preparation_time": 25
+    },
+    {
+      "name": "Entrecôte Grillée",
+      "ingredients": ["entrecôte", "beurre d'herbes", "frites", "salade"],
+      "base_price": 20.0,
+      "category": "traditionnel",
+      "popularity": 0.75,
+      "vegetarian": false,
+      "preparation_time": 20
+    },
+    {
+      "name": "Risotto aux Champignons",
+      "ingredients": ["riz arborio", "champignons", "parmesan", "vin blanc", "oignon", "bouillon"],
+      "base_price": 15.0,
+      "category": "spécialité",
+      "popularity": 0.65,
+      "vegetarian": true,
+      "preparation_time": 30
+    },
+    {
+      "name": "Filet de Dorade",
+      "ingredients": ["dorade", "huile d'olive", "citron", "légumes de saison"],
+      "base_price": 17.0,
+      "category": "méditerranéen",
+      "popularity": 0.6,
+      "vegetarian": false,
+      "preparation_time": 22
+    }
+  ],
+  "dessert": [
+    {
+      "name": "Tiramisu",
+      "ingredients": ["mascarpone", "café", "biscuits", "cacao", "œufs", "sucre"],
+      "base_price": 6.5,
+      "category": "italien",
+      "popularity": 0.9,
+      "vegetarian": true,
+      "preparation_time": 15
+    },
+    {
+      "name": "Mousse au Chocolat",
+      "ingredients": ["chocolat noir", "œufs", "sucre", "crème"],
+      "base_price": 6.0,
+      "category": "classique",
+      "popularity": 0.85,
+      "vegetarian": true,
+      "preparation_time": 15
+    },
+    {
+      "name": "Crème Brûlée",
+      "ingredients": ["crème", "œufs", "vanille", "sucre"],
+      "base_price": 7.0,
+      "category": "français",
+      "popularity": 0.7,
+      "vegetarian": true,
+      "preparation_time": 18
+    },
+    {
+      "name": "Tarte aux Fruits de Saison",
+      "ingredients": ["pâte sablée", "crème pâtissière", "fruits de saison"],
+      "base_price": 6.0,
+      "category": "pâtisserie",
+      "popularity": 0.65,
+      "vegetarian": true,
+      "preparation_time": 20
+    }
+  ],
+  "salade": [
+    {
+      "name": "Salade César",
+      "ingredients": ["salade romaine", "poulet", "parmesan", "croûtons", "sauce césar"],
+      "base_price": 12.0,
+      "category": "classique",
+      "popularity": 0.8,
+      "vegetarian": false,
+      "preparation_time": 15
+    },
+    {
+      "name": "Salade de Chèvre Chaud",
+      "ingredients": ["salade mixte", "chèvre", "noix", "miel", "vinaigrette"],
+      "base_price": 13.0,
+      "category": "français",
+      "popularity": 0.75,
+      "vegetarian": true,
+      "preparation_time": 15
+    }
+  ]
+}
