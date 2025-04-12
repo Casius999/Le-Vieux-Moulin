@@ -41,8 +41,10 @@ Ce dépôt contient l'intégralité du système de gestion intelligente dévelop
   - [/integration/api_connectors/](./integration/api_connectors/) - **Module fonctionnel** pour les connecteurs API
   - [/integration/API_INTEGRATION.md](./integration/API_INTEGRATION.md) - Documentation détaillée des intégrations API
 
+- **[/ml/](./ml/)** - Module d'intelligence artificielle et machine learning
+  - [/ml/prediction_module/](./ml/prediction_module/) - **Module fonctionnel** de prédiction et d'optimisation
+
 - **Modules en cours de développement** :
-  - `/ml/` - Module d'intelligence artificielle et machine learning
   - `/ui/` - Interfaces utilisateur (tablettes, dashboards)
   - `/marketing/` - Module marketing et communication automatisée
   - `/accounting/` - Module de comptabilité avancé
@@ -66,8 +68,16 @@ Ce dépôt contient l'intégralité du système de gestion intelligente dévelop
   - Documentation détaillée et exemples d'utilisation
   - Prêt pour le déploiement en production
 
+- **Module ML de prédiction** ([/ml/prediction_module/](./ml/prediction_module/)) :
+  - Prévision des besoins en matières premières et optimisation des stocks
+  - Génération automatique de suggestions de recettes (plat du jour, pizza spéciale)
+  - Production de prévisions financières pour le module de comptabilité
+  - Modèles basés sur TensorFlow et PyTorch (LSTM, XGBoost, systèmes de recommandation)
+  - API REST pour l'intégration avec le système central
+  - Documentation complète et tests unitaires
+  - Prêt pour le déploiement en production
+
 ### 🚧 Modules en Cours de Développement
-- **Module ML** : Modèles prédictifs pour la consommation et l'optimisation des stocks
 - **Interface Utilisateur** : Application sur tablette et commande vocale
 
 ### 📅 Modules Planifiés
@@ -86,7 +96,9 @@ Si vous reprenez ce projet pour la première fois, voici comment vous orienter :
 
 4. **Module Intégration API** : Le [module d'intégration API](./integration/api_connectors/) permet la connexion avec tous les systèmes externes. Consultez sa [documentation](./integration/API_INTEGRATION.md) et les [exemples](./integration/api_connectors/examples/).
 
-5. **Conventions de code** : Suivez les directives du fichier [CONTRIBUTING.md](./CONTRIBUTING.md) pour maintenir la cohérence du code.
+5. **Module Prédiction ML** : Le [module de prédiction ML](./ml/prediction_module/) offre des fonctionnalités d'intelligence artificielle pour l'optimisation des stocks et la génération de suggestions. Consultez sa [documentation détaillée](./ml/prediction_module/MODEL_DOC.md) pour comprendre les modèles et leur déploiement.
+
+6. **Conventions de code** : Suivez les directives du fichier [CONTRIBUTING.md](./CONTRIBUTING.md) pour maintenir la cohérence du code.
 
 ## Scalabilité
 
