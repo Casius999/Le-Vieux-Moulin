@@ -1,158 +1,402 @@
 # Module Capteurs IoT - Le Vieux Moulin
 
-Ce dossier contient tous les éléments nécessaires pour l'installation, la configuration et la maintenance des différents capteurs IoT déployés dans le restaurant "Le Vieux Moulin".
+Ce module gère l'ensemble des capteurs IoT installés dans le restaurant "Le Vieux Moulin" pour la surveillance en temps réel des stocks et équipements. Il permet la collecte, le traitement et la transmission sécurisée des données vers le serveur central.
 
-## Types de Capteurs et Installation
+## Table des Matières
 
-### 1. Cellules de Charge pour Bacs d'Ingrédients
+1. [Vue d'ensemble](#vue-densemble)
+2. [Capteurs supportés](#capteurs-supportés)
+3. [Architecture du module](#architecture-du-module)
+4. [Installation](#installation)
+   - [Prérequis matériels](#prérequis-matériels)
+   - [Prérequis logiciels](#prérequis-logiciels)
+   - [Installation des dépendances](#installation-des-dépendances)
+   - [Configuration du système](#configuration-du-système)
+5. [Câblage et branchements](#câblage-et-branchements)
+   - [Cellules de charge (HX711)](#cellules-de-charge-hx711)
+   - [Capteur ultrasonique (HC-SR04)](#capteur-ultrasonique-hc-sr04)
+   - [Capteur de température (DS18B20)](#capteur-de-température-ds18b20)
+   - [Capteur de turbidité](#capteur-de-turbidité)
+6. [Configuration](#configuration)
+   - [Fichier de configuration](#fichier-de-configuration)
+   - [Options de configuration](#options-de-configuration)
+7. [Utilisation](#utilisation)
+   - [Démarrage du système](#démarrage-du-système)
+   - [Interface en ligne de commande](#interface-en-ligne-de-commande)
+   - [Calibration des capteurs](#calibration-des-capteurs)
+8. [Transmission des données](#transmission-des-données)
+   - [Format des données](#format-des-données)
+   - [Protocole MQTT](#protocole-mqtt)
+   - [Gestion hors ligne](#gestion-hors-ligne)
+9. [Maintenance](#maintenance)
+   - [Vérification des capteurs](#vérification-des-capteurs)
+   - [Dépannage courant](#dépannage-courant)
+   - [Journaux (logs)](#journaux-logs)
+10. [Développement](#développement)
+    - [Structure du code](#structure-du-code)
+    - [Ajouter un nouveau type de capteur](#ajouter-un-nouveau-type-de-capteur)
+    - [Tests](#tests)
+11. [Support](#support)
 
-Ces capteurs permettent de mesurer en temps réel le poids des ingrédients dans les bacs de stockage.
+## Vue d'ensemble
 
-#### Matériel requis
-- Cellule de charge HX711 (modèle 5kg ou 10kg selon le bac)
-- Amplificateur HX711
-- Boîtier étanche IP65
-- Câble blindé 4 conducteurs
-- Support métallique pour installation sous le bac
+Le module Capteurs IoT est conçu pour surveiller en temps réel les niveaux de stock d'ingrédients (via des cellules de charge sous les bacs) et l'état de la friteuse (niveau et qualité d'huile). Les données collectées sont transmises au serveur central via WiFi ou Bluetooth, avec mise en cache locale en cas de perte de connexion.
 
-#### Installation
-1. Fixez solidement la cellule de charge sous le bac d'ingrédients
-2. Connectez l'amplificateur HX711 à la cellule de charge
-3. Reliez l'amplificateur au microcontrôleur ESP32 selon le schéma de câblage fourni dans `/wiring_diagrams/weight_sensor.pdf`
-4. Placez le boîtier de protection pour protéger les composants électroniques
+Ce système permet d'optimiser la gestion des stocks, de réduire le gaspillage et d'anticiper les besoins en approvisionnement, tout en assurant un suivi de la qualité des équipements de cuisson.
 
-#### Calibration
-```arduino
-// Exemple de code de calibration pour cellule de charge
-#include "HX711.h"
+## Capteurs supportés
 
-#define DOUT_PIN  5
-#define SCK_PIN  6
-#define REFERENCE_WEIGHT 1000  // en grammes
+- **Cellules de charge HX711** : Pour mesurer le poids des ingrédients dans différents bacs
+- **Capteur ultrasonique HC-SR04** : Pour mesurer le niveau d'huile dans la friteuse
+- **Capteur de température DS18B20** : Pour surveiller la température de l'huile
+- **Capteur de turbidité** (optionnel) : Pour évaluer la qualité de l'huile
 
-HX711 scale;
+## Architecture du module
 
-void setup() {
-  Serial.begin(9600);
-  scale.begin(DOUT_PIN, SCK_PIN);
-  
-  Serial.println("Retirez tout poids du capteur...");
-  delay(5000);
-  scale.tare();  // Réinitialisation à zéro
-  
-  Serial.println("Placez un poids de référence...");
-  delay(5000);
-  
-  float reading = scale.get_value(10);  // Moyenne sur 10 lectures
-  float calibration_factor = reading / REFERENCE_WEIGHT;
-  
-  Serial.print("Facteur de calibration: ");
-  Serial.println(calibration_factor);
-}
+Le module est organisé en trois composants principaux :
 
-void loop() {}
+1. **`weight_sensor.py`** : Gère les cellules de charge pour la mesure du poids des ingrédients
+2. **`oil_level_sensor.py`** : Gère les capteurs de niveau et de qualité d'huile pour la friteuse
+3. **`network_manager.py`** : Gère la connexion réseau et la transmission des données
+
+Un script principal **`main.py`** orchestre l'ensemble du système et permet son exécution en tant que service.
+
+## Installation
+
+### Prérequis matériels
+
+- Raspberry Pi 3B+ ou supérieur (ou équivalent)
+- Cellules de charge avec amplificateurs HX711
+- Capteur ultrasonique HC-SR04
+- Capteur de température DS18B20 résistant à la chaleur
+- Capteur de turbidité (optionnel)
+- Câblage et connecteurs
+- Alimentation stable
+
+### Prérequis logiciels
+
+- Raspberry Pi OS (ou équivalent)
+- Python 3.7+
+- Accès réseau (WiFi ou Ethernet)
+
+### Installation des dépendances
+
+```bash
+# Cloner le dépôt
+git clone https://github.com/Casius999/Le-Vieux-Moulin.git
+cd Le-Vieux-Moulin/iot/sensor_module
+
+# Installer les dépendances
+pip install -r requirements.txt
+
+# Activer le bus 1-Wire pour le capteur DS18B20
+echo "dtoverlay=w1-gpio,gpiopin=4" | sudo tee -a /boot/config.txt
+sudo reboot
 ```
 
-### 2. Sonde Niveau d'Huile Friteuse
+### Configuration du système
 
-Cette sonde surveille le niveau et la qualité de l'huile dans la friteuse.
+1. Créez un fichier de configuration basé sur l'exemple :
+   ```bash
+   cp config.example.json config.json
+   ```
 
-#### Matériel requis
-- Capteur de niveau à ultrasons résistant à la chaleur
-- Sonde de température DS18B20 haute température
-- Boîtier résistant à la chaleur
-- Câble haute température
+2. Modifiez le fichier de configuration selon votre installation :
+   ```bash
+   nano config.json
+   ```
 
-#### Installation
-1. Fixez le capteur de niveau sur le bord supérieur de la friteuse
-2. Placez la sonde de température à mi-hauteur dans l'huile (sans toucher les résistances)
-3. Acheminez les câbles vers le boîtier contenant l'ESP32
-4. Suivez le schéma de câblage dans `/wiring_diagrams/oil_sensor.pdf`
+3. Configuration comme service (optionnel) :
+   ```bash
+   sudo cp lvm_sensors.service /etc/systemd/system/
+   sudo systemctl enable lvm_sensors.service
+   sudo systemctl start lvm_sensors.service
+   ```
 
-#### Configuration
+## Câblage et branchements
+
+### Cellules de charge (HX711)
+
+Pour chaque cellule de charge :
+
+1. Connectez la cellule de charge à l'amplificateur HX711 :
+   - Fil rouge → E+
+   - Fil noir → E-
+   - Fil blanc → A+
+   - Fil vert → A-
+
+2. Connectez l'amplificateur HX711 au Raspberry Pi :
+   - VCC → 3.3V (Pin 1)
+   - GND → GND (Pin 6)
+   - DT (Data) → GPIO assigné (ex: GPIO 5)
+   - SCK (Clock) → GPIO assigné (ex: GPIO 6)
+
+### Capteur ultrasonique (HC-SR04)
+
+1. Connectez le capteur HC-SR04 au Raspberry Pi :
+   - VCC → 5V (Pin 2)
+   - GND → GND (Pin 6)
+   - TRIG → GPIO assigné (ex: GPIO 23)
+   - ECHO → Diviseur de tension → GPIO assigné (ex: GPIO 24)
+
+   > **Note**: Un diviseur de tension est nécessaire pour l'ECHO car il renvoie 5V, alors que le Raspberry Pi accepte 3.3V max.
+
+### Capteur de température (DS18B20)
+
+1. Connectez le capteur DS18B20 au Raspberry Pi :
+   - VCC → 3.3V (Pin 1)
+   - GND → GND (Pin 6)
+   - DATA → GPIO4 (Pin 7) avec résistance pull-up de 4.7kΩ
+
+2. Pour une utilisation dans l'huile, utilisez une version étanche et résistante à la chaleur.
+
+### Capteur de turbidité
+
+Si utilisé, connectez selon les spécifications du capteur choisi. Généralement :
+   - VCC → 5V
+   - GND → GND
+   - OUT → ADC → GPIO
+
+## Configuration
+
+### Fichier de configuration
+
+Le système utilise un fichier de configuration JSON pour définir les paramètres des capteurs et du réseau. Exemple :
+
 ```json
-// Exemple de configuration pour la sonde d'huile
 {
-  "sensor_id": "friteuse_01",
-  "sensor_type": "oil_level",
-  "update_frequency": 60,  // secondes
-  "alert_threshold_low": 2.5,  // cm du fond
-  "alert_threshold_high": 10.0,  // cm du fond
-  "temperature_max": 180,  // °C
-  "temperature_idle": 120,  // °C
-  "mqtt_topic": "restaurant/kitchen/fryer/oil_level"
+  "device_id": "cuisine_principale",
+  "server": {
+    "host": "192.168.1.100",
+    "mqtt_port": 1883,
+    "mqtt_use_tls": false
+  },
+  "network": {
+    "type": "wifi",
+    "ssid": "LVM_Network",
+    "password": "password123"
+  },
+  "sensors": {
+    "weight": [
+      {
+        "name": "bac_farine",
+        "pins": {"dout": 5, "sck": 6},
+        "reference_unit": 2145.3,
+        "min_weight": 0.0,
+        "max_weight": 5000.0
+      },
+      {
+        "name": "bac_sucre",
+        "pins": {"dout": 17, "sck": 18},
+        "reference_unit": 1998.7,
+        "min_weight": 0.0,
+        "max_weight": 2000.0
+      }
+    ],
+    "fryer": {
+      "name": "friteuse_principale",
+      "ultrasonic": {"trigger": 23, "echo": 24},
+      "temp_pin": 4,
+      "turbidity_pin": 17,
+      "depth": 15.0
+    }
+  },
+  "update_interval": 60
 }
 ```
 
-### 3. Capteurs de Température
+### Options de configuration
 
-Ces capteurs surveillent la température des équipements de cuisson et de réfrigération.
+| Paramètre | Description | Valeur par défaut |
+|-----------|-------------|-------------------|
+| `device_id` | Identifiant unique du dispositif | `"lvm_kitchen_01"` |
+| `server.host` | Adresse IP ou hostname du serveur | `"localhost"` |
+| `server.mqtt_port` | Port MQTT du serveur | `1883` |
+| `server.mqtt_use_tls` | Utilisation de TLS pour MQTT | `false` |
+| `network.type` | Type de connexion (`wifi`, `bluetooth`, `ethernet`) | `"wifi"` |
+| `network.ssid` | SSID du réseau WiFi | - |
+| `network.password` | Mot de passe WiFi | - |
+| `sensors.weight[].name` | Nom du capteur de poids | - |
+| `sensors.weight[].pins` | Pins GPIO pour le capteur | - |
+| `sensors.weight[].reference_unit` | Facteur de calibration | `1.0` |
+| `sensors.fryer.ultrasonic` | Pins pour le capteur ultrasonique | - |
+| `sensors.fryer.temp_pin` | Pin GPIO pour le capteur de température | - |
+| `update_interval` | Intervalle d'envoi des données (secondes) | `60` |
 
-#### Matériel requis
-- Capteurs DS18B20 (version standard ou haute température selon l'usage)
-- Câble résistant à la chaleur pour les fours
-- Boîtier de protection
+## Utilisation
 
-#### Installation
-1. Pour les réfrigérateurs: placez le capteur à l'intérieur, à mi-hauteur
-2. Pour les fours: installez le capteur dans l'emplacement prévu par le fabricant
-3. Connectez les capteurs au bus OneWire de l'ESP32
-4. Configurez l'adresse unique de chaque capteur
+### Démarrage du système
 
-## Communication et Configuration
+Exécutez le script principal :
 
-### MQTT Topics
-
-Tous les capteurs publient leurs données sur des topics MQTT structurés comme suit:
+```bash
+python main.py --config config.json
 ```
-restaurant/[zone]/[equipement]/[mesure]
-```
 
-Exemples:
-- `restaurant/stockage/bac_farine/poids`
-- `restaurant/cuisine/friteuse/niveau_huile`
-- `restaurant/cuisine/four_pizza/temperature`
+Options de ligne de commande :
+- `--config` : Chemin vers le fichier de configuration
+- `--log-level` : Niveau de journalisation (`DEBUG`, `INFO`, `WARNING`, `ERROR`)
 
-### Format des Données
+### Interface en ligne de commande
 
-Les données sont publiées au format JSON:
+Le script principal offre une interface simple en ligne de commande qui affiche l'état des capteurs et les messages importants.
+
+Pour arrêter proprement le système, utilisez Ctrl+C.
+
+### Calibration des capteurs
+
+#### Calibration des cellules de charge
+
+Pour une calibration précise des cellules de charge :
+
+1. Exécutez le script de calibration :
+   ```bash
+   python calibrate_weight.py --sensor bac_farine
+   ```
+
+2. Suivez les instructions à l'écran pour placer des poids de référence et enregistrer la valeur de calibration.
+
+3. Mettez à jour la valeur `reference_unit` dans le fichier de configuration.
+
+#### Calibration du capteur de niveau d'huile
+
+1. Assurez-vous que la friteuse est vide et propre.
+
+2. Exécutez le script de calibration :
+   ```bash
+   python calibrate_oil_level.py
+   ```
+
+3. Suivez les instructions pour mesurer la profondeur et calibrer le capteur.
+
+## Transmission des données
+
+### Format des données
+
+Les données sont envoyées au format JSON avec la structure suivante :
+
 ```json
 {
-  "sensor_id": "bac_farine_01",
-  "timestamp": 1617283200,
-  "value": 2.45,
-  "unit": "kg",
-  "battery": 92,
-  "rssi": -67
+  "timestamp": 1649247668.453,
+  "device_id": "cuisine_principale",
+  "type": "weight_sensors",
+  "data": {
+    "bac_farine": 2450.5,
+    "bac_sucre": 1230.8
+  }
 }
 ```
 
-## Dépannage
+```json
+{
+  "timestamp": 1649247668.556,
+  "device_id": "cuisine_principale",
+  "type": "fryer",
+  "name": "friteuse_principale",
+  "operating_status": "ready",
+  "level": {
+    "level_cm": 10.5,
+    "level_percent": 70.0,
+    "status": "normal"
+  },
+  "quality": {
+    "temperature": 175.2,
+    "quality_percent": 85.0,
+    "needs_replacement": false
+  }
+}
+```
 
-### Problèmes courants et solutions
+### Protocole MQTT
+
+Les données sont publiées sur des topics MQTT structurés comme suit :
+- `data/{device_id}/weight` - Données des capteurs de poids
+- `data/{device_id}/fryer` - Données de la friteuse
+
+Le système souscrit aux topics de contrôle :
+- `control/{device_id}/restart` - Commande de redémarrage
+- `control/{device_id}/configure` - Mise à jour de configuration
+
+### Gestion hors ligne
+
+En cas de perte de connexion, les données sont stockées localement dans un cache et envoyées dès que la connexion est rétablie. Le cache est géré automatiquement pour éviter de remplir l'espace disque.
+
+## Maintenance
+
+### Vérification des capteurs
+
+Pour vérifier l'état des capteurs :
+
+```bash
+python check_sensors.py
+```
+
+Ce script teste chaque capteur et affiche son état et les éventuels problèmes détectés.
+
+### Dépannage courant
 
 | Problème | Cause possible | Solution |
 |----------|----------------|----------|
-| Lectures instables de poids | Interférences électriques | Vérifier le blindage des câbles |
-| Capteur non répondant | Batterie faible / Perte de connexion | Remplacer la batterie / Vérifier la connexion WiFi |
-| Dérive des mesures | Décalibration | Exécuter la routine de calibration |
-| Alertes fréquentes | Seuils mal configurés | Ajuster les seuils d'alerte |
+| Lectures de poids instables | Interférences électriques | Vérifier le blindage des câbles |
+| Capteur non répondant | Connexion défectueuse | Vérifier les branchements |
+| Dérive des mesures | Décalibration | Recalibrer le capteur |
+| Connexion réseau perdue | Problème WiFi | Vérifier la configuration réseau |
 
-### Maintenance préventive
+### Journaux (logs)
 
-- Calibrer les cellules de charge tous les 3 mois
-- Vérifier les batteries des capteurs sans fil mensuellement
-- Nettoyer les capteurs de température tous les 6 mois
-- Mettre à jour le firmware des ESP32 lors des nouvelles versions
+Les journaux sont stockés dans `/var/log/lvm_sensors.log` (si configuré comme service) ou affichés dans la console.
 
-## Consommation Énergétique
+Pour analyser les journaux :
 
-| Type de capteur | Mode actif | Mode veille | Autonomie (batterie) |
-|-----------------|------------|-------------|----------------------|
-| Cellule de charge | 15mA | 0.1mA | 3-6 mois |
-| Sonde niveau huile | 25mA | N/A (alimenté) | N/A |
-| Capteur température | 4mA | 0.01mA | 6-12 mois |
+```bash
+tail -f /var/log/lvm_sensors.log
+```
 
----
+## Développement
 
-Pour toute question ou problème, consultez la documentation complète ou contactez l'équipe de support technique.
+### Structure du code
+
+- `weight_sensor.py` : Classes pour les capteurs de poids
+  - `HX711` : Interface bas niveau pour l'amplificateur HX711
+  - `WeightSensor` : Gestion d'un capteur de poids individuel
+  - `WeightSensorArray` : Gestion de plusieurs capteurs
+
+- `oil_level_sensor.py` : Classes pour la friteuse
+  - `OilQualitySensor` : Capteur de qualité d'huile
+  - `OilLevelSensor` : Capteur de niveau d'huile
+  - `FryerMonitor` : Classe principale combinant niveau et qualité
+
+- `network_manager.py` : Gestion réseau
+  - `NetworkManager` : Classe principale pour la connectivité
+  - `MQTTClient` : Client MQTT pour la communication
+  - `DataCache` : Système de mise en cache local
+
+### Ajouter un nouveau type de capteur
+
+1. Créez un nouveau fichier Python pour votre capteur (ex: `temperature_sensor.py`).
+
+2. Implémentez une classe pour gérer votre capteur avec au minimum :
+   - Méthode d'initialisation (`__init__`)
+   - Méthode de lecture (`read` ou équivalent)
+   - Méthode pour obtenir l'état (`get_status`)
+
+3. Intégrez votre capteur dans `main.py` et mettez à jour la configuration.
+
+### Tests
+
+Des tests unitaires sont disponibles dans le dossier `tests/` :
+
+```bash
+# Exécuter tous les tests
+pytest
+
+# Exécuter des tests spécifiques
+pytest tests/test_weight_sensor.py
+```
+
+## Support
+
+Pour toute question ou problème :
+- Consultez la documentation complète dans le dossier `/docs`
+- Créez une issue sur le dépôt GitHub
+- Contactez l'équipe technique à support@levieuxmoulin.fr
