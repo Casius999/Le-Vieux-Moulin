@@ -37,10 +37,13 @@ Ce dépôt contient l'intégralité du système de gestion intelligente dévelop
 - **[/iot/](./iot/)** : Module de gestion des capteurs IoT
   - [/iot/sensor_module/](./iot/sensor_module/) - **Module fonctionnel** pour la gestion des capteurs
 
+- **[/integration/](./integration/)** : Intégrations avec les systèmes externes
+  - [/integration/api_connectors/](./integration/api_connectors/) - **Module fonctionnel** pour les connecteurs API
+  - [/integration/API_INTEGRATION.md](./integration/API_INTEGRATION.md) - Documentation détaillée des intégrations API
+
 - **Modules en cours de développement** :
   - `/ml/` - Module d'intelligence artificielle et machine learning
   - `/ui/` - Interfaces utilisateur (tablettes, dashboards)
-  - `/integration/` - Intégrations avec les systèmes externes
   - `/marketing/` - Module marketing et communication automatisée
   - `/accounting/` - Module de comptabilité avancé
 
@@ -54,10 +57,18 @@ Ce dépôt contient l'intégralité du système de gestion intelligente dévelop
   - Documentation complète d'installation et d'utilisation
   - Prêt pour le déploiement en production
 
+- **Module d'intégration API** ([/integration/api_connectors/](./integration/api_connectors/)) :
+  - Connecteurs pour les systèmes de point de vente (Lightspeed, Square)
+  - Intégration avec les fournisseurs (Metro, Transgourmet, Pomona)
+  - Synchronisation avec les plateformes de réservation (TheFork, OpenTable)
+  - Connexion avec les systèmes CRM (HubSpot, Zoho)
+  - Gestion sécurisée des authentifications et des tokens
+  - Documentation détaillée et exemples d'utilisation
+  - Prêt pour le déploiement en production
+
 ### 🚧 Modules en Cours de Développement
 - **Module ML** : Modèles prédictifs pour la consommation et l'optimisation des stocks
 - **Interface Utilisateur** : Application sur tablette et commande vocale
-- **Intégrations API** : Connecteurs avec les systèmes externes
 
 ### 📅 Modules Planifiés
 - **Module Marketing** : Automatisation des campagnes et réseaux sociaux
@@ -73,7 +84,9 @@ Si vous reprenez ce projet pour la première fois, voici comment vous orienter :
 
 3. **Module Capteurs IoT** : Le [module IoT](./iot/sensor_module/) est fonctionnel et documenté. Consultez son [README](./iot/sensor_module/README.md) pour comprendre l'implémentation.
 
-4. **Conventions de code** : Suivez les directives du fichier [CONTRIBUTING.md](./CONTRIBUTING.md) pour maintenir la cohérence du code.
+4. **Module Intégration API** : Le [module d'intégration API](./integration/api_connectors/) permet la connexion avec tous les systèmes externes. Consultez sa [documentation](./integration/API_INTEGRATION.md) et les [exemples](./integration/api_connectors/examples/).
+
+5. **Conventions de code** : Suivez les directives du fichier [CONTRIBUTING.md](./CONTRIBUTING.md) pour maintenir la cohérence du code.
 
 ## Scalabilité
 
