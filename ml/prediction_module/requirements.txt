@@ -1,0 +1,49 @@
+# Dépendances principales
+tensorflow>=2.11.0
+torch>=1.13.0
+scikit-learn>=1.2.0
+xgboost>=1.7.0
+prophet>=1.1.0
+pandas>=1.5.0
+numpy>=1.23.0
+matplotlib>=3.6.0
+seaborn>=0.12.0
+plotly>=5.11.0
+
+# API et déploiement
+fastapi>=0.95.0
+uvicorn>=0.21.0
+pydantic>=1.10.0
+python-dotenv>=1.0.0
+
+# Traitement des données
+pyarrow>=11.0.0
+tqdm>=4.65.0
+SQLAlchemy>=2.0.0
+psycopg2-binary>=2.9.0
+joblib>=1.2.0
+
+# Sérialisation des modèles
+onnx>=1.13.0
+onnxruntime>=1.14.0
+tensorflow-serving-api>=2.11.0
+tensorflowjs>=4.4.0
+
+# Tests et qualité du code
+pytest>=7.3.1
+pytest-cov>=4.1.0
+black>=23.3.0
+isort>=5.12.0
+flake8>=6.0.0
+mypy>=1.2.0
+
+# Documentation
+Sphinx>=6.1.0
+sphinx-rtd-theme>=1.2.0
+nbsphinx>=0.9.0
+ipykernel>=6.0.0
+
+# Autres
+pymongo>=4.3.0
+redis>=4.5.0
+s3fs>=2023.3.0
