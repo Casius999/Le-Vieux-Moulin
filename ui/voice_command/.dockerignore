@@ -1,0 +1,67 @@
+# Fichiers et dossiers à ignorer lors de la construction de l'image Docker
+
+# Environnements virtuels
+venv/
+env/
+.env/
+
+# Fichiers Python compilés et cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Journaux et données temporaires
+*.log
+logs/
+tmp/
+cache/
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Fichiers IDE et éditeurs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Fichiers Git
+.git
+.gitattributes
+.gitignore
+
+# Fichiers Docker
+.dockerignore
+
+# Configuration spécifique à l'environnement
+config.yaml
+
+# Fichiers de distribution
+*.tar.gz
+*.zip
+
+# Tests
+tests/
+
+# Documentation et exemples
+docs/
+examples/

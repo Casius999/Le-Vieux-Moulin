@@ -1,0 +1,84 @@
+/* Thème Clair pour le module de commande vocale */
+
+:root {
+    --primary-color: #3498db;
+    --secondary-color: #ecf0f1;
+    --accent-color: #2980b9;
+    --text-color: #2c3e50;
+    --bg-color: #f8f9fa;
+    --card-bg: #ffffff;
+}
+
+body {
+    color: var(--text-color);
+}
+
+.bg-primary {
+    background-color: var(--primary-color) !important;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+    border-color: #2980b9;
+}
+
+.bg-kitchen {
+    background-color: var(--bg-color);
+    background-image: none;
+}
+
+.status-area, 
+.recognition-area, 
+.command-area {
+    background-color: var(--card-bg) !important;
+    border: 1px solid #e9ecef;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+.voice-text, 
+.command-display {
+    background-color: #f8f9fa !important;
+    border-color: #e9ecef;
+}
+
+.voice-text.active {
+    background-color: #e3f2fd !important;
+    border-color: #bbdefb;
+}
+
+.command-result {
+    background-color: #e3f2fd !important;
+    border-color: #bbdefb;
+}
+
+/* Links */
+a {
+    color: var(--primary-color);
+}
+
+a:hover {
+    color: var(--accent-color);
+}
+
+/* Clean simple aesthetic */
+.card, .modal-content {
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* Soften alert styles */
+.alert {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.alert-info {
+    background-color: #e3f2fd;
+    color: #0c5460;
+}

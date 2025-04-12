@@ -1,0 +1,83 @@
+/* Thème Sombre pour le module de commande vocale */
+
+:root {
+    --primary-color: #6c5ce7;
+    --secondary-color: #2d3436;
+    --accent-color: #a29bfe;
+    --text-color: #dfe6e9;
+    --bg-color: #1e272e;
+    --card-bg: #2d3436;
+}
+
+body {
+    color: var(--text-color);
+    background-color: var(--bg-color);
+}
+
+.bg-primary {
+    background-color: var(--primary-color) !important;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #5f4dd1;
+    border-color: #5f4dd1;
+}
+
+.bg-kitchen {
+    background-color: var(--bg-color);
+    background-image: none;
+}
+
+.status-area,
+.recognition-area,
+.command-area {
+    background-color: var(--card-bg) !important;
+    border: 1px solid #444;
+}
+
+.voice-text,
+.command-display {
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    color: var(--text-color);
+    border-color: #444;
+}
+
+.command-result {
+    background-color: rgba(108, 92, 231, 0.1) !important;
+    border-color: var(--accent-color);
+}
+
+/* Text elements */
+h1, h2, h3, h4, h5, h6 {
+    color: #ecf0f1;
+}
+
+.text-muted {
+    color: #b2becd !important;
+}
+
+/* Alert styling */
+.alert-info {
+    background-color: rgba(108, 92, 231, 0.2);
+    color: #dfe6e9;
+    border-color: rgba(108, 92, 231, 0.4);
+}
+
+/* Invert certain elements for better visibility */
+.form-control,
+.form-select {
+    background-color: var(--secondary-color);
+    border-color: #444;
+    color: var(--text-color);
+}
+
+.list-group-item {
+    background-color: var(--card-bg);
+    border-color: #444;
+    color: var(--text-color);
+}

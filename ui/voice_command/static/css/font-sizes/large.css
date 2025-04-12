@@ -1,0 +1,81 @@
+/* Grande taille de police pour le module de commande vocale */
+
+body {
+    font-size: 1.1rem;
+}
+
+h1 {
+    font-size: 2.5rem;
+}
+
+h2 {
+    font-size: 2.25rem;
+}
+
+h3 {
+    font-size: 2rem;
+}
+
+h4 {
+    font-size: 1.75rem;
+}
+
+h5 {
+    font-size: 1.5rem;
+}
+
+h6 {
+    font-size: 1.25rem;
+}
+
+.btn {
+    font-size: 1.1rem;
+}
+
+.btn-lg {
+    font-size: 1.4rem;
+}
+
+.btn-sm {
+    font-size: 1rem;
+}
+
+.form-control,
+.form-select {
+    font-size: 1.1rem;
+    padding: 0.5rem 1rem;
+}
+
+.voice-text,
+.command-display,
+.command-result {
+    font-size: 1.2rem;
+    padding: 1rem !important;
+}
+
+.small, small {
+    font-size: 0.95rem;
+}
+
+.badge {
+    font-size: 0.9rem;
+}
+
+/* Agrandir les boutons et les éléments d'interaction */
+.voice-controls .btn {
+    width: 80px !important;
+    height: 80px !important;
+}
+
+.voice-controls .btn i {
+    font-size: 32px !important;
+}
+
+/* Plus d'espace entre les éléments */
+.mb-3 {
+    margin-bottom: 1.5rem !important;
+}
+
+.p-3 {
+    padding: 1.5rem !important;
+}

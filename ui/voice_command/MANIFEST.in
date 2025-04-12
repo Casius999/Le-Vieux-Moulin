@@ -1,0 +1,17 @@
+include README.md
+include LICENSE
+include requirements.txt
+include config.example.yaml
+include commands.example.yaml
+
+recursive-include static *
+recursive-include templates *
+recursive-include ui/voice_command/static *
+recursive-include ui/voice_command/templates *
+
+prune */__pycache__
+prune ./.git*
+prune ./dist
+prune ./build
+prune ./tests
+prune ./*.egg-info

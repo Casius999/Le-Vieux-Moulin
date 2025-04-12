@@ -1,0 +1,203 @@
+/* Styles pour le mode contraste élevé */
+
+:root {
+    --high-contrast-text: #ffffff;
+    --high-contrast-bg: #000000;
+    --high-contrast-primary: #ffff00; /* Jaune vif */
+    --high-contrast-secondary: #00ffff; /* Cyan vif */
+    --high-contrast-success: #00ff00; /* Vert vif */
+    --high-contrast-danger: #ff0000; /* Rouge vif */
+    --high-contrast-warning: #ffaa00; /* Orange vif */
+    --high-contrast-info: #00aaff; /* Bleu vif */
+    --high-contrast-border: #ffffff;
+}
+
+body {
+    color: var(--high-contrast-text) !important;
+    background-color: var(--high-contrast-bg) !important;
+}
+
+.bg-kitchen {
+    background-image: none !important;
+    background-color: var(--high-contrast-bg) !important;
+}
+
+/* Headers et sections principales */
+header {
+    background-color: var(--high-contrast-primary) !important;
+    color: var(--high-contrast-bg) !important;
+    border-bottom: 2px solid var(--high-contrast-border);
+}
+
+footer {
+    background-color: var(--high-contrast-primary) !important;
+    color: var(--high-contrast-bg) !important;
+    border-top: 2px solid var(--high-contrast-border);
+}
+
+/* Contraste des textes */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--high-contrast-text) !important;
+}
+
+/* Zones d'affichage */
+.status-area,
+.recognition-area,
+.command-area {
+    background-color: var(--high-contrast-bg) !important;
+    border: 2px solid var(--high-contrast-border) !important;
+    color: var(--high-contrast-text) !important;
+}
+
+.voice-text,
+.command-display,
+.command-result {
+    background-color: #222222 !important;
+    border: 2px solid var(--high-contrast-border) !important;
+    color: var(--high-contrast-text) !important;
+}
+
+/* Boutons et interactions */
+.btn-primary {
+    background-color: var(--high-contrast-primary) !important;
+    border-color: var(--high-contrast-border) !important;
+    color: var(--high-contrast-bg) !important;
+    font-weight: bold;
+}
+
+.btn-secondary {
+    background-color: var(--high-contrast-secondary) !important;
+    border-color: var(--high-contrast-border) !important;
+    color: var(--high-contrast-bg) !important;
+    font-weight: bold;
+}
+
+.btn-success {
+    background-color: var(--high-contrast-success) !important;
+    border-color: var(--high-contrast-border) !important;
+    color: var(--high-contrast-bg) !important;
+}
+
+.btn-danger {
+    background-color: var(--high-contrast-danger) !important;
+    border-color: var(--high-contrast-border) !important;
+    color: var(--high-contrast-text) !important;
+}
+
+.btn-outline-light,
+.btn-outline-secondary,
+.btn-outline-primary {
+    border: 2px solid var(--high-contrast-text) !important;
+    color: var(--high-contrast-text) !important;
+}
+
+.btn-outline-light:hover,
+.btn-outline-secondary:hover,
+.btn-outline-primary:hover {
+    background-color: var(--high-contrast-text) !important;
+    color: var(--high-contrast-bg) !important;
+}
+
+/* Formulaires */
+.form-control,
+.form-select {
+    background-color: var(--high-contrast-bg) !important;
+    color: var(--high-contrast-text) !important;
+    border: 2px solid var(--high-contrast-border) !important;
+}
+
+/* Alertes */
+.alert-info {
+    background-color: var(--high-contrast-info) !important;
+    color: var(--high-contrast-bg) !important;
+    border: 2px solid var(--high-contrast-border) !important;
+    font-weight: bold;
+}
+
+.alert-success {
+    background-color: var(--high-contrast-success) !important;
+    color: var(--high-contrast-bg) !important;
+    border: 2px solid var(--high-contrast-border) !important;
+    font-weight: bold;
+}
+
+.alert-danger {
+    background-color: var(--high-contrast-danger) !important;
+    color: var(--high-contrast-text) !important;
+    border: 2px solid var(--high-contrast-border) !important;
+    font-weight: bold;
+}
+
+.alert-warning {
+    background-color: var(--high-contrast-warning) !important;
+    color: var(--high-contrast-bg) !important;
+    border: 2px solid var(--high-contrast-border) !important;
+    font-weight: bold;
+}
+
+/* Badges */
+.badge.bg-primary {
+    background-color: var(--high-contrast-primary) !important;
+    color: var(--high-contrast-bg) !important;
+}
+
+.badge.bg-secondary {
+    background-color: var(--high-contrast-secondary) !important;
+    color: var(--high-contrast-bg) !important;
+}
+
+.badge.bg-success {
+    background-color: var(--high-contrast-success) !important;
+    color: var(--high-contrast-bg) !important;
+}
+
+.badge.bg-danger {
+    background-color: var(--high-contrast-danger) !important;
+    color: var(--high-contrast-text) !important;
+}
+
+.badge.bg-warning {
+    background-color: var(--high-contrast-warning) !important;
+    color: var(--high-contrast-bg) !important;
+}
+
+.badge.bg-info {
+    background-color: var(--high-contrast-info) !important;
+    color: var(--high-contrast-bg) !important;
+}
+
+.badge.bg-light {
+    background-color: var(--high-contrast-text) !important;
+    color: var(--high-contrast-bg) !important;
+}
+
+.badge.bg-dark {
+    background-color: #444444 !important;
+    color: var(--high-contrast-text) !important;
+    border: 1px solid var(--high-contrast-text) !important;
+}
+
+/* Améliorer le constraste des éléments textuels */
+.text-muted {
+    color: #dddddd !important;
+}
+
+/* Jauge de confiance */
+.confidence-meter .progress {
+    background-color: #444444 !important;
+    border: 1px solid var(--high-contrast-border) !important;
+}
+
+.confidence-meter .progress-bar {
+    font-weight: bold;
+}
+
+/* Liens */
+a {
+    color: var(--high-contrast-secondary) !important;
+    text-decoration: underline !important;
+}
+
+a:hover {
+    color: var(--high-contrast-primary) !important;
+}

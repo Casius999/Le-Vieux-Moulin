@@ -1,0 +1,60 @@
+/* Taille de police moyenne pour le module de commande vocale */
+
+body {
+    font-size: 1rem;
+}
+
+h1 {
+    font-size: 2rem;
+}
+
+h2 {
+    font-size: 1.75rem;
+}
+
+h3 {
+    font-size: 1.5rem;
+}
+
+h4 {
+    font-size: 1.25rem;
+}
+
+h5 {
+    font-size: 1.1rem;
+}
+
+h6 {
+    font-size: 1rem;
+}
+
+.btn {
+    font-size: 1rem;
+}
+
+.btn-lg {
+    font-size: 1.25rem;
+}
+
+.btn-sm {
+    font-size: 0.875rem;
+}
+
+.form-control,
+.form-select {
+    font-size: 1rem;
+}
+
+.voice-text,
+.command-display,
+.command-result {
+    font-size: 1rem;
+}
+
+.small, small {
+    font-size: 0.875rem;
+}
+
+.badge {
+    font-size: 0.8rem;
+}
