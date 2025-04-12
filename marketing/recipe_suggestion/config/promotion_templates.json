@@ -1,0 +1,82 @@
+{
+  "standard": {
+    "title": "L'offre du jour: {recipe_name}",
+    "description": "Découvrez notre {recipe_name}, préparé avec des ingrédients frais et à prix spécial aujourd'hui!",
+    "discount_type": "percentage",
+    "discount_value": 10,
+    "duration_hours": 24,
+    "channels": ["in_store", "social_media", "website"]
+  },
+  "flash_sale": {
+    "title": "FLASH DEAL - {recipe_name}",
+    "description": "Pour quelques heures seulement! Notre {recipe_name} à prix réduit. Ne manquez pas cette offre!",
+    "discount_type": "percentage",
+    "discount_value": 15,
+    "duration_hours": 4,
+    "channels": ["social_media", "website", "email"]
+  },
+  "weekend_special": {
+    "title": "Spécial Weekend: {recipe_name}",
+    "description": "Célébrez le weekend avec notre délicieux {recipe_name}, une création exclusive de notre chef!",
+    "discount_type": "fixed",
+    "discount_value": 3,
+    "duration_hours": 48,
+    "channels": ["in_store", "social_media", "website"]
+  },
+  "ingredient_spotlight": {
+    "title": "À l'honneur: {main_ingredient}",
+    "description": "Notre {recipe_name} met en valeur {main_ingredient} de saison. Une expérience gustative à ne pas manquer!",
+    "discount_type": "percentage",
+    "discount_value": 0,
+    "duration_hours": 72,
+    "channels": ["in_store", "website"]
+  },
+  "new_recipe": {
+    "title": "NOUVEAU - {recipe_name}",
+    "description": "Essayez notre nouvelle création, le {recipe_name}! Une recette exclusive du chef, disponible pour une durée limitée.",
+    "discount_type": "percentage",
+    "discount_value": 0,
+    "duration_hours": 168,
+    "channels": ["in_store", "social_media", "website", "email"]
+  },
+  "happy_hour": {
+    "title": "Happy Hour - {recipe_name}",
+    "description": "Entre 18h et 20h, profitez de notre {recipe_name} à prix réduit! Idéal pour un apéritif entre amis.",
+    "discount_type": "percentage",
+    "discount_value": 20,
+    "duration_hours": 2,
+    "channels": ["in_store", "social_media"]
+  },
+  "lunch_special": {
+    "title": "Menu Déjeuner - {recipe_name}",
+    "description": "Offre du midi! Savourez notre {recipe_name} à prix avantageux. Le plaisir d'une pause déjeuner savoureuse!",
+    "discount_type": "fixed",
+    "discount_value": 2,
+    "duration_hours": 4,
+    "channels": ["in_store", "website"]
+  },
+  "seasonal": {
+    "title": "Saveurs de Saison - {recipe_name}",
+    "description": "Découvrez notre {recipe_name} avec des {main_ingredient} de saison. Un plat qui célèbre les saveurs du moment!",
+    "discount_type": "percentage",
+    "discount_value": 5,
+    "duration_hours": 120,
+    "channels": ["in_store", "social_media", "website"]
+  },
+  "chef_recommendation": {
+    "title": "La Recommandation du Chef - {recipe_name}",
+    "description": "Notre chef vous recommande le {recipe_name}, une de ses créations favorites. Une expérience gastronomique à ne pas manquer!",
+    "discount_type": "percentage",
+    "discount_value": 0,
+    "duration_hours": 72,
+    "channels": ["in_store", "website"]
+  },
+  "group_discount": {
+    "title": "Offre de Groupe - {recipe_name}",
+    "description": "Venez à quatre ou plus et bénéficiez d'une réduction sur notre {recipe_name}! Parfait pour partager un bon moment.",
+    "discount_type": "percentage",
+    "discount_value": 15,
+    "duration_hours": 168,
+    "channels": ["social_media", "website", "email"]
+  }
+}
