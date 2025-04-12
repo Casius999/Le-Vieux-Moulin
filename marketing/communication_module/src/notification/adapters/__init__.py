@@ -1,8 +1,8 @@
 """
-Package d'adaptateurs pour les notifications
+Package de gestion des adaptateurs de notification
 
-Ce package contient les adaptateurs permettant d'envoyer des notifications
-via différents canaux (email, SMS, push, etc.).
+Ce package contient les adaptateurs pour envoyer des notifications
+via différents canaux (email, SMS, etc.).
 """
 
 from typing import Dict, Any
@@ -34,4 +34,4 @@ def get_adapter(channel_name: str, config: Dict[str, Any]) -> NotificationAdapte
     elif channel_name == 'push':
         return PushAdapter(config)
     else:
-        raise ValueError(f"Canal de notification non pris en charge: {channel_name}")
+        raise ValueError(f"Canal non pris en charge: {channel_name}")
