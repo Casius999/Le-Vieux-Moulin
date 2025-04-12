@@ -1,0 +1,66 @@
+{
+  "device_id": "cuisine_principale",
+  "server": {
+    "host": "192.168.1.100",
+    "mqtt_port": 1883,
+    "mqtt_use_tls": false,
+    "mqtt_user": "lvm_sensors",
+    "mqtt_password": "changeme"
+  },
+  "network": {
+    "type": "wifi",
+    "ssid": "LVM_Network",
+    "password": "password123",
+    "bt_server_mac": null
+  },
+  "sensors": {
+    "weight": [
+      {
+        "name": "bac_farine",
+        "pins": {"dout": 5, "sck": 6},
+        "reference_unit": 2145.3,
+        "min_weight": 0.0,
+        "max_weight": 5000.0,
+        "unit": "g"
+      },
+      {
+        "name": "bac_sucre",
+        "pins": {"dout": 17, "sck": 18},
+        "reference_unit": 1998.7,
+        "min_weight": 0.0,
+        "max_weight": 2000.0,
+        "unit": "g"
+      },
+      {
+        "name": "bac_sel",
+        "pins": {"dout": 22, "sck": 27},
+        "reference_unit": 2056.8,
+        "min_weight": 0.0,
+        "max_weight": 1000.0,
+        "unit": "g"
+      }
+    ],
+    "fryer": {
+      "name": "friteuse_principale",
+      "ultrasonic": {"trigger": 23, "echo": 24},
+      "temp_pin": 4,
+      "turbidity_pin": 17,
+      "depth": 15.0,
+      "min_level": 3.0,
+      "max_level": 13.0,
+      "max_capacity": 8.0
+    }
+  },
+  "update_interval": 60,
+  "logging": {
+    "level": "INFO",
+    "file": "/var/log/lvm_sensors.log",
+    "max_size_mb": 10,
+    "backup_count": 5
+  },
+  "cache": {
+    "dir": "/var/cache/lvm_sensors",
+    "max_size_mb": 100,
+    "max_entries": 10000
+  }
+}
