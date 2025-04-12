@@ -44,9 +44,11 @@ Ce dépôt contient l'intégralité du système de gestion intelligente dévelop
 - **[/ml/](./ml/)** - Module d'intelligence artificielle et machine learning
   - [/ml/prediction_module/](./ml/prediction_module/) - **Module fonctionnel** de prédiction et d'optimisation
 
+- **[/marketing/](./marketing/)** - Module marketing et communication automatisée
+  - [/marketing/recipe_suggestion/](./marketing/recipe_suggestion/) - **Module fonctionnel** de suggestion de recettes et promotions
+
 - **Modules en cours de développement** :
   - `/ui/` - Interfaces utilisateur (tablettes, dashboards)
-  - `/marketing/` - Module marketing et communication automatisée
   - `/accounting/` - Module de comptabilité avancé
 
 ## État du Développement
@@ -77,11 +79,19 @@ Ce dépôt contient l'intégralité du système de gestion intelligente dévelop
   - Documentation complète et tests unitaires
   - Prêt pour le déploiement en production
 
+- **Module de suggestion de recettes** ([/marketing/recipe_suggestion/](./marketing/recipe_suggestion/)) :
+  - Analyse des promotions des fournisseurs en temps réel
+  - Analyse des tendances locales et préférences clients
+  - Génération automatique de suggestions de recettes innovantes
+  - Création et diffusion de promotions basées sur les suggestions
+  - Intégration avec les systèmes de vente et marketing
+  - Documentation complète et tests unitaires
+  - Prêt pour le déploiement en production
+
 ### 🚧 Modules en Cours de Développement
 - **Interface Utilisateur** : Application sur tablette et commande vocale
 
 ### 📅 Modules Planifiés
-- **Module Marketing** : Automatisation des campagnes et réseaux sociaux
 - **Module Comptabilité** : Génération de rapports financiers
 
 ## Guide pour les Développeurs
@@ -98,7 +108,9 @@ Si vous reprenez ce projet pour la première fois, voici comment vous orienter :
 
 5. **Module Prédiction ML** : Le [module de prédiction ML](./ml/prediction_module/) offre des fonctionnalités d'intelligence artificielle pour l'optimisation des stocks et la génération de suggestions. Consultez sa [documentation détaillée](./ml/prediction_module/MODEL_DOC.md) pour comprendre les modèles et leur déploiement.
 
-6. **Conventions de code** : Suivez les directives du fichier [CONTRIBUTING.md](./CONTRIBUTING.md) pour maintenir la cohérence du code.
+6. **Module de suggestion de recettes** : Le [module de suggestion de recettes](./marketing/recipe_suggestion/) permet d'analyser les promotions fournisseurs et de générer des suggestions culinaires. Consultez sa [documentation](./marketing/recipe_suggestion/RECIPE_STRATEGY.md) pour comprendre l'algorithme.
+
+7. **Conventions de code** : Suivez les directives du fichier [CONTRIBUTING.md](./CONTRIBUTING.md) pour maintenir la cohérence du code.
 
 ## Scalabilité
 
