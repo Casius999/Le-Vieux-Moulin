@@ -8,7 +8,7 @@ d'envoi de notifications.
 import abc
 import logging
 import datetime
-from typing import Dict, Any, Optional, Union
+from typing import Dict, List, Any, Optional, Union
 
 
 class NotificationAdapter(abc.ABC):
@@ -30,7 +30,7 @@ class NotificationAdapter(abc.ABC):
         if not config.get('enabled', False):
             self.logger.warning(f"L'adaptateur {self.__class__.__name__} est initialisé mais désactivé")
         
-        # Initialiser les informations d'authentification et autres paramètres
+        # Initialiser les paramètres d'authentification et autres configurations
         self._setup_auth()
         
         self.logger.info(f"Adaptateur {self.__class__.__name__} initialisé")
@@ -38,7 +38,7 @@ class NotificationAdapter(abc.ABC):
     @abc.abstractmethod
     def _setup_auth(self) -> None:
         """
-        Configure l'authentification pour le canal.
+        Configure l'authentification pour le canal de notification.
         
         Cette méthode doit être implémentée par chaque adaptateur concret
         pour gérer les spécificités d'authentification de son canal.
@@ -55,7 +55,7 @@ class NotificationAdapter(abc.ABC):
             content: Contenu de la notification (sujet, corps, etc.)
             
         Returns:
-            Identifiant du message envoyé
+            Identifiant de la notification envoyée
             
         Raises:
             Exception: En cas d'erreur lors de l'envoi
@@ -64,7 +64,7 @@ class NotificationAdapter(abc.ABC):
     
     @abc.abstractmethod
     def schedule(self, recipient: str, content: Dict[str, Any], 
-               send_time: Union[str, datetime.datetime]) -> str:
+                send_time: Union[str, datetime.datetime]) -> str:
         """
         Programme l'envoi d'une notification.
         
@@ -74,7 +74,7 @@ class NotificationAdapter(abc.ABC):
             send_time: Date et heure d'envoi
             
         Returns:
-            Identifiant du message programmé
+            Identifiant de la notification programmée
             
         Raises:
             Exception: En cas d'erreur lors de la programmation
@@ -82,15 +82,15 @@ class NotificationAdapter(abc.ABC):
         pass
     
     @abc.abstractmethod
-    def get_status(self, message_id: str) -> Dict[str, Any]:
+    def get_status(self, notification_id: str) -> Dict[str, Any]:
         """
         Récupère le statut d'une notification.
         
         Args:
-            message_id: Identifiant du message
+            notification_id: Identifiant de la notification
             
         Returns:
-            Statut de la notification (envoyée, livrée, ouverte, etc.)
+            Détails et statut de la notification
             
         Raises:
             Exception: En cas d'erreur lors de la récupération du statut
@@ -98,12 +98,12 @@ class NotificationAdapter(abc.ABC):
         pass
     
     @abc.abstractmethod
-    def cancel(self, message_id: str) -> bool:
+    def cancel(self, notification_id: str) -> bool:
         """
         Annule une notification programmée.
         
         Args:
-            message_id: Identifiant du message
+            notification_id: Identifiant de la notification à annuler
             
         Returns:
             True si l'annulation a réussi, False sinon
@@ -115,7 +115,7 @@ class NotificationAdapter(abc.ABC):
     
     def validate_recipient(self, recipient: str) -> bool:
         """
-        Valide un destinataire pour ce canal.
+        Valide le format du destinataire pour ce canal.
         
         Args:
             recipient: Destinataire à valider
@@ -123,6 +123,32 @@ class NotificationAdapter(abc.ABC):
         Returns:
             True si le destinataire est valide, False sinon
         """
-        # Par défaut, accepte tous les destinataires
-        # Cette méthode peut être surchargée par les adaptateurs concrets
+        # À implémenter par les classes concrètes
         return True
+    
+    def format_content(self, template_content: Dict[str, Any], data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Formate le contenu d'une notification en injectant les données.
+        
+        Args:
+            template_content: Template de contenu avec variables
+            data: Données à injecter dans le template
+            
+        Returns:
+            Contenu formaté pour l'envoi
+        """
+        # Implémentation basique, à personnaliser par les classes concrètes
+        formatted = {}
+        
+        for key, value in template_content.items():
+            if isinstance(value, str):
+                # Substitution basique des variables {{var}}
+                formatted_value = value
+                for data_key, data_value in data.items():
+                    placeholder = "{{" + data_key + "}}"
+                    formatted_value = formatted_value.replace(placeholder, str(data_value))
+                formatted[key] = formatted_value
+            else:
+                formatted[key] = value
+        
+        return formatted
