@@ -1,0 +1,69 @@
+{
+  "metro": {
+    "name": "Metro",
+    "api_type": "rest",
+    "base_url": "https://api.metro.fr/v2",
+    "promotions_endpoint": "/promotions",
+    "products_endpoint": "/products",
+    "auth": {
+      "type": "oauth2",
+      "client_id": "your_client_id_here",
+      "client_secret": "your_client_secret_here",
+      "token_url": "https://api.metro.fr/v2/oauth/token"
+    },
+    "preferred_categories": [
+      "viandes", "fromages", "légumes", "fruits", "épicerie", "boissons"
+    ],
+    "delivery_days": [1, 3, 5],  // Lundi, Mercredi, Vendredi
+    "min_order_value": 150.0
+  },
+  "transgourmet": {
+    "name": "Transgourmet",
+    "api_type": "rest",
+    "base_url": "https://api.transgourmet.fr/api",
+    "promotions_endpoint": "/promotions/current",
+    "products_endpoint": "/products/catalog",
+    "auth": {
+      "type": "api_key",
+      "key_name": "x-api-key",
+      "key_value": "your_api_key_here"
+    },
+    "preferred_categories": [
+      "poissons", "fruits de mer", "viandes", "charcuterie", "fromages"
+    ],
+    "delivery_days": [2, 4],  // Mardi, Jeudi
+    "min_order_value": 200.0
+  },
+  "pomona": {
+    "name": "Pomona",
+    "api_type": "soap",
+    "wsdl_url": "https://api.pomona.fr/services/PromotionService?wsdl",
+    "auth": {
+      "type": "basic",
+      "username": "your_username_here",
+      "password": "your_password_here"
+    },
+    "preferred_categories": [
+      "fruits", "légumes", "produits bio", "épicerie fine"
+    ],
+    "delivery_days": [1, 3, 5],  // Lundi, Mercredi, Vendredi
+    "min_order_value": 100.0
+  },
+  "local_producers": {
+    "name": "Producteurs Locaux",
+    "api_type": "rest",
+    "base_url": "http://localhost:8000/api",
+    "promotions_endpoint": "/local/promotions",
+    "products_endpoint": "/local/products",
+    "auth": {
+      "type": "api_key",
+      "key_name": "x-api-key",
+      "key_value": "your_local_api_key_here"
+    },
+    "preferred_categories": [
+      "produits locaux", "fruits", "légumes", "vins", "fromages"
+    ],
+    "delivery_days": [3, 6],  // Mercredi, Samedi
+    "min_order_value": 50.0
+  }
+}
