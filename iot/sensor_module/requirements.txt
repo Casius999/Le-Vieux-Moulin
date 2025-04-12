@@ -1,0 +1,15 @@
+# Dépendances pour le module de capteurs IoT du Vieux Moulin
+# Installez avec: pip install -r requirements.txt
+
+# Communication GPIO pour Raspberry Pi
+RPi.GPIO>=0.7.0
+
+# MQTT pour la communication avec le serveur central
+paho-mqtt>=1.6.1
+
+# Bibliothèques pour Bluetooth (optionnel)
+PyBluez>=0.23; platform_system != "Windows"  # Non disponible sous Windows
+
+# Utilitaires
+pyserial>=3.5
+typing-extensions>=4.0.0
