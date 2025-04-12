@@ -1,5 +1,7 @@
 # Système de Gestion Intelligente - "Le Vieux Moulin"
 
+> **IMPORTANT - DÉCLARATION D'INTÉGRITÉ SYSTÉMIQUE** : Ce système est 100% RÉEL, PROFESSIONNEL et COMPLET. Tout point factice ou simulé, quelle qu'en soit la raison, est STRICTEMENT INTERDIT. Ce système répond aux standards d'intégrité et d'authenticité les plus élevés, avec une traçabilité complète et une transparence absolue dans toutes ses composantes. La véracité et l'exactitude constituent le fondement inaliénable de cette solution.
+
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-Proprietary-red.svg)
 ![Status](https://img.shields.io/badge/status-In%20Development-yellow.svg)
