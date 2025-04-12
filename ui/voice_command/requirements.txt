@@ -1,0 +1,28 @@
+# Dépendances principales
+PyAudio==0.2.13
+SpeechRecognition==3.10.0
+websocket-client==1.6.1
+requests==2.31.0
+yaml==6.0.1
+pyyaml==6.0.1
+flask==2.3.3
+flask-socketio==5.3.4
+jinja2==3.1.2
+werkzeug==2.3.7
+bootstrap-flask==2.3.0
+python-dotenv==1.0.0
+pytextdistance==4.5.0
+
+# Reconnaissance vocale alternative
+pocketsphinx==0.1.15
+pymongo==4.5.0
+
+# Dépendances pour tests
+pytest==7.4.0
+pytest-cov==4.1.0
+mock==5.1.0
+
+# Outils de développement
+black==23.7.0
+flake8==6.1.0
+mypy==1.5.1

@@ -1,0 +1,71 @@
+# Configuration du module de commande vocale
+# Le Vieux Moulin - Système de gestion intelligente
+
+# Informations générales
+device_id: "tablette_cuisine_01"  # Identifiant unique de cette tablette
+location: "cuisine"               # Emplacement (cuisine, salle, bar)
+language: "fr-FR"                 # Langue principale (fr-FR, en-US, es-ES)
+
+# Configuration du serveur central
+server:
+  host: "192.168.1.100"           # Adresse IP ou hostname du serveur central
+  api_port: 8080                 # Port de l'API REST
+  websocket_port: 8081           # Port pour les WebSockets
+  use_ssl: true                  # Utiliser SSL/TLS pour les communications
+  api_key: ""                    # Laisser vide pour utiliser l'authentification OAuth
+
+# Configuration de la reconnaissance vocale
+speech_recognition:
+  engine: "local"                # "local" ou "cloud" (service en ligne)
+  cloud_provider: ""             # Si engine="cloud", spécifier le provider (google, azure, etc.)
+  cloud_api_key: ""              # Clé API pour le service cloud
+  sensitivity: 0.7               # Sensibilité du microphone (0.0-1.0)
+  noise_suppression: true        # Activer la suppression du bruit
+  vad_threshold: 0.5             # Seuil de détection d'activité vocale (0.0-1.0)
+  timeout: 5                     # Temps d'attente après silence (secondes)
+  secondary_languages:           # Langues secondaires pour reconnaissance
+    - "en-US"
+    - "es-ES"
+
+# Configuration des commandes
+commands:
+  stock:
+    enabled: true
+    verification_required: false  # Demander confirmation pour ces commandes
+  equipment:
+    enabled: true
+    verification_required: true   # Demander confirmation pour ces commandes
+  recipe:
+    enabled: true
+    verification_required: false  # Demander confirmation pour ces commandes
+  order:
+    enabled: true
+    verification_required: true   # Demander confirmation pour ces commandes
+
+# Configuration de l'interface utilisateur
+ui:
+  theme: "kitchen"               # Thème visuel (kitchen, dark, light)
+  font_size: "large"             # Taille de police (small, medium, large)
+  high_contrast: false           # Mode contraste élevé pour visibilité
+  display_timeout: 60            # Temps avant mise en veille de l'affichage (secondes)
+  feedback:
+    audio: true                  # Retour audio des commandes reconnues
+    visual: true                 # Retour visuel des commandes reconnues
+    haptic: true                 # Vibration de confirmation (si disponible)
+  history_size: 20               # Nombre de commandes dans l'historique
+
+# Réseau et connectivité
+network:
+  reconnect_attempts: 3          # Nombre de tentatives de reconnexion
+  reconnect_delay: 5             # Délai entre tentatives (secondes)
+  offline_mode:
+    enabled: true                # Activer le mode hors ligne
+    cache_size: 100              # Nombre maximal de commandes en cache
+    sync_interval: 300           # Intervalle de sync en mode connecté (secondes)
+
+# Journalisation
+logging:
+  level: "INFO"                  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  file: "voice_command.log"      # Chemin du fichier journal (relatif)
+  rotation: "daily"              # Rotation des journaux (none, daily, weekly)
+  max_files: 7                   # Nombre maximal de fichiers journaux
