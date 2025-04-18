@@ -1,0 +1,216 @@
+{
+  "general": {
+    "restaurant_name": "Le Vieux Moulin",
+    "base_url": "https://levieuxmoulin.fr",
+    "timezone": "Europe/Paris",
+    "default_language": "fr",
+    "log_level": "INFO",
+    "data_retention_days": 365
+  },
+  "api": {
+    "host": "0.0.0.0",
+    "port": 5000,
+    "workers": 4,
+    "timeout": 120,
+    "cors_origins": ["https://levieuxmoulin.fr", "https://admin.levieuxmoulin.fr"],
+    "rate_limits": {
+      "public": 100,
+      "authenticated": 1000
+    }
+  },
+  "database": {
+    "type": "postgresql",
+    "host": "localhost",
+    "port": 5432,
+    "database": "vieuxmoulin_communication",
+    "user": "communication_user",
+    "password": "REPLACE_WITH_SECURE_PASSWORD",
+    "pool_size": 10,
+    "timeout": 60
+  },
+  "cache": {
+    "type": "redis",
+    "host": "localhost",
+    "port": 6379,
+    "db": 0,
+    "ttl": 3600
+  },
+  "queue": {
+    "type": "rabbitmq",
+    "host": "localhost",
+    "port": 5672,
+    "user": "guest",
+    "password": "guest",
+    "vhost": "/",
+    "retry": {
+      "max_attempts": 5,
+      "initial_delay": 5,
+      "max_delay": 300,
+      "backoff_factor": 2
+    }
+  },
+  "social_media": {
+    "default_post_time": "18:00",
+    "optimal_posting": {
+      "facebook": {
+        "best_days": ["wednesday", "thursday", "friday"],
+        "best_times": ["12:00", "15:00", "18:00"]
+      },
+      "instagram": {
+        "best_days": ["monday", "thursday", "sunday"],
+        "best_times": ["11:00", "14:00", "19:00"]
+      }
+    },
+    "content_limits": {
+      "facebook": {
+        "text_max_length": 5000,
+        "image_count_max": 10
+      },
+      "instagram": {
+        "text_max_length": 2200,
+        "image_count_max": 10
+      },
+      "twitter": {
+        "text_max_length": 280,
+        "image_count_max": 4
+      }
+    },
+    "analytics": {
+      "update_frequency_minutes": 60,
+      "metrics": ["impressions", "reach", "engagement", "clicks"]
+    }
+  },
+  "notification": {
+    "email": {
+      "provider": "sendgrid",
+      "api_key": "REPLACE_WITH_SENDGRID_API_KEY",
+      "from_email": "contact@levieuxmoulin.fr",
+      "from_name": "Le Vieux Moulin",
+      "reply_to": "contact@levieuxmoulin.fr",
+      "max_batch_size": 100,
+      "rate_limit_per_minute": 500
+    },
+    "sms": {
+      "provider": "twilio",
+      "account_sid": "REPLACE_WITH_TWILIO_SID",
+      "auth_token": "REPLACE_WITH_TWILIO_AUTH_TOKEN",
+      "from_number": "+33XXXXXXXXX",
+      "rate_limit_per_minute": 100
+    },
+    "push": {
+      "enabled": false,
+      "provider": "firebase",
+      "api_key": "REPLACE_WITH_FIREBASE_API_KEY"
+    },
+    "templates_dir": "../templates",
+    "opt_out_management": {
+      "unsubscribe_url_format": "https://levieuxmoulin.fr/unsubscribe?token={token}&channel={channel}",
+      "check_preferences_before_send": true
+    }
+  },
+  "menu_updater": {
+    "auto_update": true,
+    "update_frequency_hours": 24,
+    "update_time": "10:00",
+    "notify_customers": true,
+    "notification_template": "menu_update",
+    "platforms": {
+      "website": {
+        "enabled": true,
+        "api_url": "https://levieuxmoulin.fr/api/menu/update",
+        "api_key": "REPLACE_WITH_WEBSITE_API_KEY"
+      },
+      "facebook": {
+        "enabled": true,
+        "update_type": "post"
+      },
+      "instagram": {
+        "enabled": true,
+        "update_type": "post"
+      },
+      "tripadvisor": {
+        "enabled": true,
+        "api_url": "https://api.tripadvisor.com/menu/update",
+        "api_key": "REPLACE_WITH_TRIPADVISOR_API_KEY"
+      },
+      "google_business": {
+        "enabled": true,
+        "api_url": "https://business.googleapis.com/v1/accounts/ACCOUNT_ID/locations/LOCATION_ID/localPosts",
+        "api_key": "REPLACE_WITH_GOOGLE_API_KEY"
+      }
+    }
+  },
+  "campaign_manager": {
+    "max_concurrent_campaigns": 10,
+    "default_campaign_duration_days": 14,
+    "optimization": {
+      "enabled": true,
+      "evaluation_frequency_hours": 24,
+      "auto_adjust": true,
+      "performance_metrics": ["conversion_rate", "engagement_rate", "roi"]
+    },
+    "templates_dir": "../campaign_templates",
+    "tracking": {
+      "url_shortener": {
+        "provider": "bitly",
+        "api_key": "REPLACE_WITH_BITLY_API_KEY",
+        "domain": "lvm.fr"
+      },
+      "utm_parameters": {
+        "source": "campaign",
+        "medium": "email",
+        "campaign_format": "vieuxmoulin_{campaign_id}"
+      }
+    }
+  },
+  "integration": {
+    "central_api_url": "http://localhost:8000/api",
+    "crm_api_url": "http://localhost:8001/api",
+    "recipes_api_url": "http://localhost:8002/api",
+    "accounting_api_url": "http://localhost:8003/api",
+    "iot_api_url": "http://localhost:8004/api",
+    "webhook_callback_url": "http://localhost:5000/api/communication/webhook",
+    "webhook_secret": "REPLACE_WITH_SECURE_SECRET",
+    "mappings_file": "../config/data_mappings.json",
+    "sync_settings": {
+      "customer_data_interval_hours": 3,
+      "menu_data_interval_hours": 4,
+      "promotion_data_interval_hours": 2,
+      "retry_on_sync_failure": true,
+      "max_sync_retries": 3
+    }
+  },
+  "security": {
+    "api_key": "REPLACE_WITH_SECURE_API_KEY",
+    "jwt": {
+      "secret": "REPLACE_WITH_SECURE_JWT_SECRET",
+      "algorithm": "HS256",
+      "token_expire_minutes": 60
+    },
+    "allowed_ips": [],
+    "rate_limiting": {
+      "enabled": true,
+      "requests_per_minute": 60
+    },
+    "content_security": {
+      "scan_uploads": true,
+      "allowed_image_types": ["jpg", "jpeg", "png", "gif"],
+      "max_upload_size_mb": 10
+    }
+  },
+  "monitoring": {
+    "health_check_interval_seconds": 60,
+    "metrics_collection_interval_seconds": 30,
+    "alert_thresholds": {
+      "error_rate_percent": 5,
+      "response_time_ms": 2000,
+      "memory_usage_percent": 90,
+      "queue_length": 1000
+    },
+    "notification_channels": ["email", "slack"],
+    "notification_recipients": {
+      "email": ["admin@levieuxmoulin.fr"],
+      "slack": ["#tech-alerts"]
+    }
+  }
+}
