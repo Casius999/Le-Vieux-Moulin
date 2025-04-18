@@ -48,6 +48,7 @@ Ce dépôt contient l'intégralité du système de gestion intelligente dévelop
 
 - **[/marketing/](./marketing/)** - Module marketing et communication automatisée
   - [/marketing/recipe_suggestion/](./marketing/recipe_suggestion/) - **Module fonctionnel** de suggestion de recettes et promotions
+  - [/marketing/communication_module/](./marketing/communication_module/) - **Module fonctionnel** de communication et d'automatisation marketing
 
 - **Modules en cours de développement** :
   - `/ui/` - Interfaces utilisateur (tablettes, dashboards)
@@ -90,6 +91,18 @@ Ce dépôt contient l'intégralité du système de gestion intelligente dévelop
   - Documentation complète et tests unitaires
   - Prêt pour le déploiement en production
 
+- **Module de communication et d'automatisation marketing** ([/marketing/communication_module/](./marketing/communication_module/)) :
+  - Orchestration centralisée de toutes les communications marketing
+  - Publication automatisée sur les réseaux sociaux (Facebook, Instagram, etc.)
+  - Système de notifications personnalisées par email et SMS
+  - Synchronisation automatique des menus sur le site web et plateformes partenaires
+  - Gestion intelligente des campagnes marketing multicanal
+  - Intégration avec les autres modules du système (CRM, recettes, IoT, comptabilité)
+  - Architecture modulaire avec orchestrateur central et intégrateur système
+  - Tests unitaires et exemples d'utilisation complets
+  - Documentation technique détaillée et guide d'installation
+  - Prêt pour le déploiement en production
+
 ### 🚧 Modules en Cours de Développement
 - **Interface Utilisateur** : Application sur tablette et commande vocale
 
@@ -112,7 +125,9 @@ Si vous reprenez ce projet pour la première fois, voici comment vous orienter :
 
 6. **Module de suggestion de recettes** : Le [module de suggestion de recettes](./marketing/recipe_suggestion/) permet d'analyser les promotions fournisseurs et de générer des suggestions culinaires. Consultez sa [documentation](./marketing/recipe_suggestion/RECIPE_STRATEGY.md) pour comprendre l'algorithme.
 
-7. **Conventions de code** : Suivez les directives du fichier [CONTRIBUTING.md](./CONTRIBUTING.md) pour maintenir la cohérence du code.
+7. **Module de communication marketing** : Le [module de communication](./marketing/communication_module/) centralise et automatise toutes les actions de communication du restaurant. Consultez sa [documentation technique](./marketing/communication_module/COMMUNICATION.md) et son [guide d'installation](./marketing/communication_module/INSTALL.md) pour comprendre son fonctionnement et son déploiement.
+
+8. **Conventions de code** : Suivez les directives du fichier [CONTRIBUTING.md](./CONTRIBUTING.md) pour maintenir la cohérence du code.
 
 ## Scalabilité
 
@@ -124,6 +139,8 @@ Le système est conçu dès le départ pour être évolutif et permettre la dupl
 - **Granularité** : Décomposition en micro-tâches pour une maintenance facilitée
 - **Évolutivité** : Architecture permettant la duplication pour un nouvel établissement
 - **Sécurité** : Authentification forte, chiffrement des communications, protection des données
+- **Intégration continue** : Tests automatisés et déploiement continu pour chaque module
+- **Orchestration** : Coordination centralisée des différents services et modules
 
 ## Installation et Déploiement
 
@@ -135,6 +152,7 @@ Chaque module dispose de sa propre documentation d'installation. Pour un déploi
 4. Déployez les interfaces utilisateur sur les tablettes murales
 5. Configurez les intégrations API externes
 6. Mettez en place les modules marketing et comptabilité
+   - Pour le module de communication : suivez les instructions dans [INSTALL.md](./marketing/communication_module/INSTALL.md)
 7. Effectuez des tests d'intégration complets
 
 Pour plus de détails, consultez les instructions spécifiques dans chaque module.
