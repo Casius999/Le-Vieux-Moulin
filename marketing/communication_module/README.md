@@ -9,6 +9,39 @@ Ce module gère l'ensemble des communications marketing et leur automatisation p
 - **Mise à jour des menus en ligne** : Synchronisation automatique des menus sur le site web et les plateformes partenaires
 - **Gestion des campagnes publicitaires** : Planification, exécution et suivi des campagnes promotionnelles
 - **Intégration multicanal** : Coordination des messages marketing sur tous les canaux de communication
+- **Synchronisation avec les données du restaurant** : Intégration transparente avec les autres modules du système (recettes, CRM, comptabilité, IoT)
+- **Orchestration centralisée** : Gestion centralisée de toutes les actions de communication via un orchestrateur
+
+## Architecture du module
+
+Le module est conçu selon une architecture modulaire, avec un orchestrateur central qui coordonne toutes les actions de communication :
+
+```
+┌────────────────────────────────────────────────────────────┐
+│                  Orchestrateur de Communication             │
+└────────────┬────────────────┬──────────────┬───────────────┘
+             │                │              │
+┌────────────▼───┐ ┌──────────▼───────┐ ┌────▼─────────┐ ┌────────────────┐
+│ Gestionnaire   │ │ Gestionnaire de  │ │ Gestionnaire │ │ Gestionnaire de │
+│ Réseaux Sociaux│ │ Notifications    │ │ de Campagnes │ │ Menus          │
+└────────────────┘ └──────────────────┘ └──────────────┘ └────────────────┘
+             │                │              │                │
+             │                │              │                │
+┌────────────▼───┐ ┌──────────▼───────┐ ┌────▼─────────┐ ┌────▼───────────┐
+│  API Externes   │ │ Services d'Envoi │ │  Planifieurs │ │  Plateformes   │
+│ (Facebook, etc.)│ │ (Email, SMS)     │ │  de Campagnes│ │  Externes      │
+└────────────────┘ └──────────────────┘ └──────────────┘ └────────────────┘
+             ▲                ▲              ▲                ▲
+             │                │              │                │
+┌────────────┴────────────────┴──────────────┴────────────────┴───────────┐
+│                       Intégrateur Système                                │
+└───────────────┬───────────────┬────────────────┬────────────────────────┘
+                │               │                │
+┌───────────────▼─┐ ┌───────────▼────┐ ┌─────────▼──────┐ ┌────────────────┐
+│  Module CRM     │ │ Module Recettes│ │ Module IoT     │ │    Module      │
+│ (Données Client)│ │    (ML)        │ │ (Données Stocks)│ │  Comptabilité  │
+└─────────────────┘ └────────────────┘ └────────────────┘ └────────────────┘
+```
 
 ## Structure du module
 
@@ -17,38 +50,46 @@ communication_module/
 ├── README.md                     # Documentation générale
 ├── COMMUNICATION.md              # Documentation technique détaillée
 ├── src/                          # Code source
+│   ├── orchestrator.py           # Orchestrateur central de communication
 │   ├── social_media/             # Gestion des réseaux sociaux
 │   │   ├── publishers/           # Connecteurs pour chaque plateforme
 │   │   ├── content_generator/    # Générateurs de contenu
 │   │   └── analytics/            # Analyse des performances
 │   ├── notification/             # Système de notifications
-│   │   ├── email_manager/        # Gestion des emails
-│   │   ├── sms_manager/          # Gestion des SMS
+│   │   ├── adapters/             # Adaptateurs pour les canaux (email, SMS)
 │   │   └── templates/            # Templates de messages
 │   ├── menu_updater/             # Mise à jour des menus en ligne
 │   ├── campaign_manager/         # Gestion des campagnes
 │   │   ├── scheduler/            # Planification des campagnes
 │   │   ├── targeting/            # Ciblage des campagnes
 │   │   └── performance/          # Suivi des performances
+│   ├── integration/              # Intégration avec les autres modules
+│   │   └── system_integrator.py  # Intégrateur système
 │   ├── common/                   # Composants communs
 │   │   ├── auth/                 # Gestion de l'authentification
 │   │   ├── utils/                # Utilitaires
 │   │   └── data_models/          # Modèles de données
 │   ├── api/                      # API REST pour intégration externe
-│   └── scheduler/                # Orchestrateur des tâches de communication
+│   │   ├── routes.py             # Définition des routes API
+│   │   ├── server.py             # Serveur API
+│   │   └── webhooks.py           # Gestionnaire de webhooks
+│   └── main.py                   # Point d'entrée principal
 ├── config/                       # Configuration
 │   ├── platforms.json            # Configuration des plateformes
 │   ├── templates.json            # Configuration des templates
 │   └── settings.json             # Paramètres généraux
 ├── tests/                        # Tests unitaires et d'intégration
 └── examples/                     # Exemples d'utilisation
+    ├── social_media_automation.py      # Exemple d'automatisation des réseaux sociaux
+    ├── notification_automation.py      # Exemple d'automatisation des notifications
+    └── menu_integration.py            # Exemple d'intégration des menus
 ```
 
 ## Installation
 
 ### Prérequis
 
-- Python 3.9+ ou Node.js 16+
+- Python 3.9+
 - Accès aux API des plateformes de réseaux sociaux
 - Compte SendGrid/Mailjet pour les emails
 - Compte Twilio/OVH pour les SMS
@@ -91,16 +132,21 @@ python src/main.py --dev
 #### Publication sur les réseaux sociaux
 
 ```python
-from communication_module.src.social_media import SocialMediaManager
+from src.orchestrator import get_orchestrator
+from src.common import Config
 
-# Initialiser le gestionnaire
-social_manager = SocialMediaManager()
+# Initialiser la configuration
+config = Config("config/settings.json")
+
+# Obtenir l'orchestrateur
+orchestrator = get_orchestrator(config)
 
 # Publier un contenu sur plusieurs plateformes
-post_result = social_manager.publish_content(
+await orchestrator.publish_to_social_media(
     content={
-        "text": "Notre pizza du jour : La Méditerranéenne !",
-        "image_url": "https://example.com/images/pizza_med.jpg",
+        "title": "Notre pizza du jour : La Méditerranéenne !",
+        "body": "Venez déguster notre pizza spéciale du jour...",
+        "media_url": "https://example.com/images/pizza_med.jpg",
         "hashtags": ["pizza", "vieuxmoulin", "vensac"]
     },
     platforms=["facebook", "instagram"],
@@ -111,23 +157,75 @@ post_result = social_manager.publish_content(
 #### Envoi de notifications
 
 ```python
-from communication_module.src.notification import NotificationManager
+from src.orchestrator import get_orchestrator
+from src.common import Config
 
-# Initialiser le gestionnaire
-notification_manager = NotificationManager()
+# Initialiser la configuration
+config = Config("config/settings.json")
+
+# Obtenir l'orchestrateur
+orchestrator = get_orchestrator(config)
 
 # Envoyer une notification
-notification_result = notification_manager.send_notification(
+await orchestrator.send_notification(
     template="promotion_annonce",
-    channels=["email", "sms"],
     recipients=["client1@example.com", "+33612345678"],
     data={
         "promotion_name": "Happy Hour",
         "discount": "20%",
         "valid_until": "2025-04-20"
-    }
+    },
+    channels=["email", "sms"]
 )
 ```
+
+#### Mise à jour de menu
+
+```python
+from src.orchestrator import get_orchestrator
+from src.common import Config
+
+# Initialiser la configuration
+config = Config("config/settings.json")
+
+# Obtenir l'orchestrateur
+orchestrator = get_orchestrator(config)
+
+# Mettre à jour le menu
+await orchestrator.update_menu(
+    menu_data={
+        "name": "Menu Printemps 2025",
+        "categories": [
+            {"name": "Entrées", "items": [...]}
+        ]
+    },
+    platforms=["website", "social_media", "delivery_platforms"]
+)
+```
+
+### Exemples complets
+
+Pour des exemples plus complets, consultez les fichiers dans le répertoire `examples/` :
+
+- `social_media_automation.py` : Automatisation des publications sur les réseaux sociaux
+- `notification_automation.py` : Automatisation des notifications clients
+- `menu_integration.py` : Intégration et synchronisation des menus
+
+## API REST
+
+Le module expose une API REST complète pour l'intégration avec d'autres systèmes. Chaque endpoint est documenté et prend en charge les méthodes HTTP standard.
+
+### Endpoints principaux
+
+```
+GET /api/communication/status - État actuel du module
+GET /api/communication/campaigns - Liste des campagnes actives
+POST /api/communication/publish - Publication de contenu
+GET /api/communication/analytics - Statistiques de performance
+POST /api/communication/notify - Envoi de notifications
+```
+
+Pour une documentation complète de l'API, consultez la documentation Swagger disponible à l'adresse `/api/docs` après le démarrage du service.
 
 ## Intégration avec les autres modules
 
@@ -152,24 +250,19 @@ Le module communique avec le module de comptabilité pour:
 - Ajuster les budgets publicitaires en fonction des performances
 - Générer des rapports de dépenses marketing
 
+### Module IoT
+
+L'intégration avec le module IoT permet:
+- Adapter les promotions en fonction des niveaux de stock
+- Ajuster les campagnes selon l'affluence en temps réel
+- Cibler les notifications en fonction de la présence des clients
+
 ## Sécurité et conformité
 
 - Toutes les communications sont conformes au RGPD
 - Les données sensibles sont chiffrées
 - Les consentements des clients sont gérés et documentés
 - Les tokens d'API sont stockés de manière sécurisée
-
-## API REST
-
-Le module expose une API REST complète pour l'intégration avec d'autres systèmes:
-
-```
-GET /api/communication/campaigns - Liste des campagnes
-POST /api/communication/publish - Publier du contenu
-GET /api/communication/analytics - Statistiques de performance
-```
-
-Pour une documentation complète de l'API, consultez la documentation Swagger disponible à l'adresse `/api/docs` après le démarrage du service.
 
 ## Monitoring et performances
 
@@ -191,12 +284,17 @@ Métriques principales:
 
 Les logs détaillés sont disponibles dans `/var/log/communication_module/`
 
+## Contribution
+
+Pour contribuer au développement du module, consultez le fichier `CONTRIBUTING.md` à la racine du projet principal.
+
 ## Roadmap
 
 - [ ] Intégration de l'IA générative pour la création de contenu
 - [ ] Support des stories Instagram éphémères
 - [ ] Analyse de sentiment des commentaires sur les réseaux sociaux
 - [ ] Module de gestion de réputation en ligne
+- [ ] Intégration avec les plateformes publicitaires (Google Ads, Facebook Ads)
 
 ## Licence
 
