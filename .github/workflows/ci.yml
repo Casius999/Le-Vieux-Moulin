@@ -1,0 +1,354 @@
+name: CI/CD Pipeline Le Vieux Moulin
+
+on:
+  push:
+    branches: [ main, develop, release/*, feature/*, bugfix/*, hotfix/* ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    
+    - name: Install Node.js dependencies
+      run: |
+        if [ -f package.json ]; then npm install; fi
+    
+    - name: Lint Python files
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        black --check .
+        isort --check-only --profile black .
+    
+    - name: Lint JavaScript/TypeScript files
+      run: |
+        if [ -f package.json ]; then npm run lint; fi
+
+  test-iot:
+    name: Test IoT Module
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov
+        if [ -f iot/requirements.txt ]; then pip install -r iot/requirements.txt; fi
+    
+    - name: Run tests
+      run: |
+        pytest tests/iot --cov=iot --cov-report=xml
+    
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: iot-coverage
+        path: coverage.xml
+
+  test-ml:
+    name: Test ML Module
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov
+        if [ -f ml/requirements.txt ]; then pip install -r ml/requirements.txt; fi
+    
+    - name: Run tests
+      run: |
+        pytest tests/ml --cov=ml --cov-report=xml
+    
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: ml-coverage
+        path: coverage.xml
+
+  test-ui:
+    name: Test UI Module
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install dependencies
+      run: |
+        if [ -f ui/package.json ]; then
+          cd ui && npm install
+        fi
+    
+    - name: Run tests
+      run: |
+        if [ -f ui/package.json ]; then
+          cd ui && npm test
+        fi
+
+  test-integration:
+    name: Test Integration Module
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov
+        if [ -f integration/requirements.txt ]; then pip install -r integration/requirements.txt; fi
+        if [ -f integration/api_connectors/package.json ]; then
+          cd integration/api_connectors && npm install
+        fi
+    
+    - name: Run tests
+      run: |
+        pytest tests/integration --cov=integration --cov-report=xml
+    
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: integration-coverage
+        path: coverage.xml
+
+  test-marketing:
+    name: Test Marketing Module
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov
+        if [ -f marketing/requirements.txt ]; then pip install -r marketing/requirements.txt; fi
+    
+    - name: Run tests
+      run: |
+        pytest tests/marketing --cov=marketing --cov-report=xml
+    
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: marketing-coverage
+        path: coverage.xml
+
+  test-accounting:
+    name: Test Accounting Module
+    runs-on: ubuntu-latest
+    needs: lint
+    if: ${{ hashFiles('accounting/**') != '' }}
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov
+        if [ -f accounting/requirements.txt ]; then pip install -r accounting/requirements.txt; fi
+    
+    - name: Run tests
+      run: |
+        pytest tests/accounting --cov=accounting --cov-report=xml
+    
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: accounting-coverage
+        path: coverage.xml
+  
+  test-integration-all:
+    name: Integration Tests (Cross-Module)
+    runs-on: ubuntu-latest
+    needs: [test-iot, test-ml, test-ui, test-integration, test-marketing]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    
+    - name: Run integration tests
+      run: |
+        pytest tests/integration_all --cov=. --cov-report=xml
+    
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: integration-all-coverage
+        path: coverage.xml
+
+  build:
+    name: Build and Package
+    runs-on: ubuntu-latest
+    needs: test-integration-all
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/'))
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    
+    - name: Build package
+      run: |
+        # Commandes de build spécifiques au projet
+        echo "Building project package..."
+    
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist-package
+        path: |
+          dist
+          build
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/'))
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: dist-package
+        path: dist
+    
+    - name: Deploy to staging environment
+      run: |
+        # Commandes de déploiement vers l'environnement de staging
+        echo "Deploying to staging environment..."
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: dist-package
+        path: dist
+    
+    - name: Deploy to production environment
+      run: |
+        # Commandes de déploiement vers l'environnement de production
+        echo "Deploying to production environment..."
+
+  notify:
+    name: Notification
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    
+    steps:
+    - name: Notify on success
+      if: ${{ success() }}
+      run: |
+        echo "Pipeline completed successfully!"
+        # Ajouter ici des notifications (email, Slack, etc.)
+    
+    - name: Notify on failure
+      if: ${{ failure() }}
+      run: |
+        echo "Pipeline failed!"
+        # Ajouter ici des notifications d'échec
