@@ -1,19 +1,12 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { setupListeners } from '@reduxjs/toolkit/query';
-
-// Import des slices Redux
 import dashboardReducer from './slices/dashboardSlice';
 import salesReducer from './slices/salesSlice';
 import stocksReducer from './slices/stocksSlice';
 import marketingReducer from './slices/marketingSlice';
 import financeReducer from './slices/financeSlice';
 import staffReducer from './slices/staffSlice';
-import authReducer from './slices/authSlice';
+import alertsReducer from './slices/alertsSlice';
 
-// Import des services API
-import { apiSlice } from './api/apiSlice';
-
-// Configuration du store Redux
 export const store = configureStore({
   reducer: {
     dashboard: dashboardReducer,
@@ -22,12 +15,13 @@ export const store = configureStore({
     marketing: marketingReducer,
     finance: financeReducer,
     staff: staffReducer,
-    auth: authReducer,
-    [apiSlice.reducerPath]: apiSlice.reducer,
+    alerts: alertsReducer,
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(apiSlice.middleware),
+    getDefaultMiddleware({
+      serializableCheck: {
+        // Ignore ces actions car elles peuvent contenir des valeurs non-sérialisables
+        ignoredActions: ['dashboard/setDateRange'],
+      },
+    }),
 });
-
-// Configuration des listeners pour les requêtes RTK Query
-setupListeners(store.dispatch);

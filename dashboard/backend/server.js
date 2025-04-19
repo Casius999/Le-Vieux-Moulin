@@ -1,35 +1,40 @@
-/**
- * Point d'entrée du serveur backend pour le dashboard
- * Le Vieux Moulin - Système de gestion intelligente
- */
+require('dotenv').config();
+const app = require('./app');
+const http = require('http');
+const { Server } = require('socket.io');
+const logger = require('./utils/logger');
 
-const { httpServer } = require('./app');
-const config = require('./config');
-const { setupLogger } = require('./utils/logger');
+// Création du serveur HTTP
+const server = http.createServer(app);
 
-// Configuration du logger
-const logger = setupLogger();
+// Configuration de Socket.io
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+});
+
+// Configuration des gestionnaires de Socket.io
+require('./websocket/handlers')(io);
+
+// Port d'écoute
+const PORT = process.env.PORT || 5000;
 
 // Démarrage du serveur
-const PORT = config.port || 5000;
-
-httpServer.listen(PORT, () => {
-  logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+server.listen(PORT, () => {
+  logger.info(`Serveur démarré sur le port ${PORT} en mode ${process.env.NODE_ENV}`);
 });
 
 // Gestion des erreurs non capturées
-process.on('uncaughtException', (err) => {
-  logger.error('UNCAUGHT EXCEPTION! 💥 Shutting down...');
-  logger.error(`${err.name}: ${err.message}`);
-  logger.error(err.stack);
-  process.exit(1);
+process.on('uncaughtException', (error) => {
+  logger.error('Erreur non capturée:', error);
 });
 
-process.on('unhandledRejection', (err) => {
-  logger.error('UNHANDLED REJECTION! 💥 Shutting down...');
-  logger.error(`${err.name}: ${err.message}`);
-  logger.error(err.stack);
-  httpServer.close(() => {
-    process.exit(1);
-  });
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Promesse rejetée non gérée:', reason);
 });
+
+// Export pour les tests
+module.exports = server;

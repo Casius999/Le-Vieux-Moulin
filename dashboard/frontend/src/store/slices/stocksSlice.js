@@ -1,120 +1,65 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import { createSlice } from '@reduxjs/toolkit';
 
-// URL de base de l'API
-const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-
-// Thunk pour récupérer les données de stocks
-export const fetchStocks = createAsyncThunk(
-  'stocks/fetchStocks',
-  async ({ category, minLevel, maxLevel, sortBy, sortOrder }, { getState, rejectWithValue }) => {
-    try {
-      const { auth } = getState();
-      
-      const response = await axios.get(`${baseUrl}/stocks`, {
-        headers: {
-          Authorization: `Bearer ${auth.token}`,
-        },
-        params: {
-          category,
-          minLevel,
-          maxLevel,
-          sortBy,
-          sortOrder,
-        },
-      });
-      
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data || { message: error.message });
-    }
-  }
-);
-
-// Thunk pour récupérer les alertes de stock
-export const fetchStockAlerts = createAsyncThunk(
-  'stocks/fetchAlerts',
-  async ({ type = 'all', limit = 50 }, { getState, rejectWithValue }) => {
-    try {
-      const { auth } = getState();
-      
-      const response = await axios.get(`${baseUrl}/stocks/alerts`, {
-        headers: {
-          Authorization: `Bearer ${auth.token}`,
-        },
-        params: {
-          type,
-          limit,
-        },
-      });
-      
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data || { message: error.message });
-    }
-  }
-);
-
-// État initial
 const initialState = {
-  stocks: [],
-  categories: [],
-  alerts: [],
-  totalPages: 0,
-  currentPage: 1,
-  loading: false,
+  items: [],
+  equipment: [],
+  isLoading: false,
   error: null,
   lastUpdated: null,
+  alertThresholds: {
+    low: 30, // Pourcentage en-dessous duquel un stock est considéré bas
+    critical: 10, // Pourcentage en-dessous duquel un stock est critique
+  },
 };
 
-// Création du slice
 const stocksSlice = createSlice({
   name: 'stocks',
   initialState,
   reducers: {
-    clearStocksData: (state) => {
-      state.stocks = [];
-      state.alerts = [];
-      state.lastUpdated = null;
+    setLoading: (state, action) => {
+      state.isLoading = action.payload;
     },
-  },
-  extraReducers: (builder) => {
-    builder
-      // Cas pour fetchStocks
-      .addCase(fetchStocks.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchStocks.fulfilled, (state, action) => {
-        state.loading = false;
-        state.stocks = action.payload.data;
-        state.categories = action.payload.categories || state.categories;
-        state.totalPages = action.payload.pagination?.totalPages || 1;
-        state.currentPage = action.payload.pagination?.currentPage || 1;
+    setError: (state, action) => {
+      state.error = action.payload;
+    },
+    setStockItems: (state, action) => {
+      state.items = action.payload;
+      state.lastUpdated = new Date().toISOString();
+    },
+    updateStockItem: (state, action) => {
+      const { id, ...updates } = action.payload;
+      const index = state.items.findIndex(item => item.id === id);
+      if (index !== -1) {
+        state.items[index] = { ...state.items[index], ...updates };
         state.lastUpdated = new Date().toISOString();
-      })
-      .addCase(fetchStocks.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload || { message: 'Une erreur est survenue' };
-      })
-      
-      // Cas pour fetchStockAlerts
-      .addCase(fetchStockAlerts.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchStockAlerts.fulfilled, (state, action) => {
-        state.loading = false;
-        state.alerts = action.payload.data;
+      }
+    },
+    setEquipment: (state, action) => {
+      state.equipment = action.payload;
+      state.lastUpdated = new Date().toISOString();
+    },
+    updateEquipment: (state, action) => {
+      const { id, ...updates } = action.payload;
+      const index = state.equipment.findIndex(item => item.id === id);
+      if (index !== -1) {
+        state.equipment[index] = { ...state.equipment[index], ...updates };
         state.lastUpdated = new Date().toISOString();
-      })
-      .addCase(fetchStockAlerts.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload || { message: 'Une erreur est survenue' };
-      });
+      }
+    },
+    setAlertThresholds: (state, action) => {
+      state.alertThresholds = action.payload;
+    },
   },
 });
 
-// Export des actions et du reducer
-export const { clearStocksData } = stocksSlice.actions;
+export const {
+  setLoading,
+  setError,
+  setStockItems,
+  updateStockItem,
+  setEquipment,
+  updateEquipment,
+  setAlertThresholds,
+} = stocksSlice.actions;
+
 export default stocksSlice.reducer;

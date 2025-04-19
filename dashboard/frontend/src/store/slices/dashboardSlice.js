@@ -1,65 +1,50 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import { createSlice } from '@reduxjs/toolkit';
 
-// URL de base de l'API
-const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-
-// Thunk pour récupérer les données du dashboard
-export const fetchDashboardData = createAsyncThunk(
-  'dashboard/fetchData',
-  async (_, { getState, rejectWithValue }) => {
-    try {
-      const { auth } = getState();
-      
-      const response = await axios.get(`${baseUrl}/dashboard/overview`, {
-        headers: {
-          Authorization: `Bearer ${auth.token}`,
-        },
-      });
-      
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data || { message: error.message });
-    }
-  }
-);
-
-// État initial
 const initialState = {
-  data: null,
-  loading: false,
+  isLoading: false,
   error: null,
+  kpis: [],
+  dateRange: {
+    start: new Date(new Date().setHours(0, 0, 0, 0)),
+    end: new Date(),
+  },
+  refreshInterval: parseInt(process.env.REACT_APP_REFRESH_INTERVAL) || 60000,
   lastUpdated: null,
 };
 
-// Création du slice
 const dashboardSlice = createSlice({
   name: 'dashboard',
   initialState,
   reducers: {
-    clearDashboardData: (state) => {
-      state.data = null;
-      state.lastUpdated = null;
+    setLoading: (state, action) => {
+      state.isLoading = action.payload;
     },
-  },
-  extraReducers: (builder) => {
-    builder
-      .addCase(fetchDashboardData.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchDashboardData.fulfilled, (state, action) => {
-        state.loading = false;
-        state.data = action.payload.data;
-        state.lastUpdated = new Date().toISOString();
-      })
-      .addCase(fetchDashboardData.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload || { message: 'Une erreur est survenue' };
-      });
+    setError: (state, action) => {
+      state.error = action.payload;
+    },
+    setKPIs: (state, action) => {
+      state.kpis = action.payload;
+      state.lastUpdated = new Date().toISOString();
+    },
+    setDateRange: (state, action) => {
+      state.dateRange = action.payload;
+    },
+    setRefreshInterval: (state, action) => {
+      state.refreshInterval = action.payload;
+    },
+    clearError: (state) => {
+      state.error = null;
+    },
   },
 });
 
-// Export des actions et du reducer
-export const { clearDashboardData } = dashboardSlice.actions;
+export const {
+  setLoading,
+  setError,
+  setKPIs,
+  setDateRange,
+  setRefreshInterval,
+  clearError,
+} = dashboardSlice.actions;
+
 export default dashboardSlice.reducer;
