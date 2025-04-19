@@ -1,0 +1,215 @@
+{
+  "app": {
+    "title": "Le Vieux Moulin - Dashboard"
+  },
+  "common": {
+    "loading": "Loading...",
+    "refresh": "Refresh",
+    "more": "More",
+    "search": "Search",
+    "export": "Export",
+    "print": "Print",
+    "filters": "Filters",
+    "customDateRange": "Custom date range",
+    "notifications": "Notifications",
+    "userMenu": "User menu"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "sales": "Sales",
+    "stock": "Inventory",
+    "marketing": "Marketing",
+    "finance": "Finance",
+    "staff": "Staff",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "welcome": "Dashboard",
+    "lastUpdate": "Last update",
+    "notifications": "Notifications",
+    "settings": "Settings",
+    "alerts": "Alerts",
+    "quickActions": "Quick Actions"
+  },
+  "user": {
+    "profile": "My Profile",
+    "signOut": "Sign Out"
+  },
+  "timeRange": {
+    "day": "Day",
+    "week": "Week",
+    "month": "Month",
+    "quarter": "Quarter",
+    "year": "Year"
+  },
+  "sales": {
+    "title": "Sales",
+    "overview": "Overview",
+    "products": "Products",
+    "hourly": "Hourly",
+    "trends": "Trends",
+    "comparison": "Comparison",
+    "overview": {
+      "title": "Sales Overview"
+    },
+    "kpi": {
+      "totalSales": "Total Sales",
+      "customers": "Customers",
+      "averageTicket": "Average Ticket"
+    },
+    "evolution": "Sales Evolution",
+    "byCategory": "Sales by Category",
+    "topProducts": "Top Products",
+    "seeAll": "See All",
+    "revenue": "Revenue",
+    "customers": "Customers",
+    "productsTabContent": "Detailed product analysis",
+    "hourlyTabContent": "Hourly sales analysis",
+    "trendsTabContent": "Sales trends analysis",
+    "comparisonTabContent": "Period comparison"
+  },
+  "stock": {
+    "title": "Inventory",
+    "overview": "Overview",
+    "inventory": "Inventory",
+    "orders": "Orders",
+    "equipment": "Equipment",
+    "history": "History",
+    "overview": {
+      "title": "Inventory Overview"
+    },
+    "category": {
+      "all": "All",
+      "ingredients": "Ingredients",
+      "drinks": "Drinks",
+      "supplies": "Supplies"
+    },
+    "status": {
+      "ok": "OK",
+      "warning": "Warning",
+      "critical": "Critical"
+    },
+    "levels": "Current Levels",
+    "lowLevels": "Low Levels",
+    "ordersToPlace": "Orders to Place",
+    "product": "Product",
+    "currentLevel": "Current Level",
+    "orderQuantity": "Order Quantity",
+    "status": "Status",
+    "current": "Current",
+    "min": "Minimum",
+    "critical": "Critical",
+    "seeAll": "See All",
+    "allLevelsOk": "All levels are OK",
+    "inventoryTabContent": "Complete inventory",
+    "ordersTabContent": "Supplier orders management",
+    "equipmentTabContent": "Equipment status",
+    "historyTabContent": "Stock movement history"
+  },
+  "marketing": {
+    "title": "Marketing",
+    "overview": "Overview",
+    "campaigns": "Campaigns",
+    "social": "Social Media",
+    "promotions": "Promotions",
+    "reviews": "Reviews",
+    "overview": {
+      "title": "Marketing Overview"
+    },
+    "bookingChannels": "Booking Channels",
+    "recentReviews": "Recent Reviews",
+    "campaignsTabContent": "Marketing campaigns management",
+    "socialTabContent": "Social media analysis",
+    "promotionsTabContent": "Offers and promotions management",
+    "reviewsTabContent": "Customer reviews and comments"
+  },
+  "finance": {
+    "title": "Finance",
+    "overview": "Overview",
+    "revenue": "Revenue",
+    "expenses": "Expenses",
+    "profit": "Profit",
+    "reports": "Reports",
+    "overview": {
+      "title": "Financial Overview"
+    },
+    "kpi": {
+      "revenue": "Revenue",
+      "expenses": "Expenses",
+      "profit": "Profit",
+      "margin": "Margin"
+    },
+    "evolution": "Financial Evolution",
+    "expensesBreakdown": "Expenses Breakdown",
+    "productCategories": "Product Categories",
+    "category": "Category",
+    "percentage": "Percentage",
+    "margin": "Margin",
+    "detailedReports": "Detailed Reports",
+    "downloadDetailedReport": "Download Detailed Report",
+    "exportReport": "Export Report",
+    "revenueTabContent": "Detailed revenue analysis",
+    "expensesTabContent": "Detailed expenses analysis",
+    "profitTabContent": "Profit and margin analysis",
+    "reportsTabContent": "Financial reports"
+  },
+  "staff": {
+    "title": "Staff",
+    "overview": "Overview",
+    "schedule": "Schedule",
+    "performance": "Performance",
+    "hours": "Hours",
+    "costs": "Costs",
+    "overview": {
+      "title": "Staff Overview"
+    },
+    "currentTeam": "Current Team",
+    "upcomingShifts": "Upcoming Shifts",
+    "staffingVsTraffic": "Staffing vs Traffic",
+    "customers": "Customers",
+    "staffCount": "Staff",
+    "performanceRating": "Performance",
+    "weeklyHours": "Weekly Hours",
+    "viewSchedule": "View Complete Schedule",
+    "scheduleTabContent": "Staff schedule",
+    "performanceTabContent": "Performance evaluation",
+    "hoursTabContent": "Working hours tracking",
+    "costsTabContent": "Staff costs analysis"
+  },
+  "actions": {
+    "inventory": "Inventory",
+    "inventoryDesc": "Start an inventory",
+    "orders": "Orders",
+    "ordersDesc": "Manage orders",
+    "marketing": "Marketing",
+    "marketingDesc": "Create a campaign",
+    "reports": "Reports",
+    "reportsDesc": "Generate a report"
+  },
+  "reservations": {
+    "today": "Today's Reservations",
+    "guests": "guests",
+    "people": "people"
+  },
+  "suggestions": {
+    "title": "Suggestions",
+    "profitMargin": "margin"
+  },
+  "products": {
+    "name": "Product",
+    "quantity": "Quantity",
+    "total": "Total"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "email": "Email",
+    "password": "Password",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?"
+  },
+  "error": {
+    "pageNotFound": "Page Not Found",
+    "pageNotFoundMessage": "The page you are looking for does not exist or has been moved.",
+    "backToHome": "Back to Home"
+  }
+}

@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  dashboard-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: le-vieux-moulin-dashboard
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - vieux-moulin-network
+
+  # Base de données MongoDB (optionnelle)
+  mongodb:
+    image: mongo:6
+    container_name: le-vieux-moulin-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - vieux-moulin-network
+
+  # Redis pour le cache et les sessions (optionnel)
+  redis:
+    image: redis:7-alpine
+    container_name: le-vieux-moulin-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - vieux-moulin-network
+
+volumes:
+  mongodb-data:
+  redis-data:
+
+networks:
+  vieux-moulin-network:
+    driver: bridge

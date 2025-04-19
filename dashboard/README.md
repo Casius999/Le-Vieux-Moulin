@@ -2,6 +2,17 @@
 
 Ce module fournit un dashboard de pilotage complet pour le système de gestion intelligente du restaurant "Le Vieux Moulin". Il permet de visualiser en temps réel les principales données et indicateurs de performance provenant de tous les autres modules du système.
 
+## Table des matières
+
+- [Fonctionnalités](#fonctionnalités)
+- [Architecture](#architecture)
+- [Structure du projet](#structure-du-projet)
+- [Installation et déploiement](#installation-et-déploiement)
+- [Connexion aux services internes](#connexion-aux-services-internes)
+- [Personnalisation](#personnalisation)
+- [Sécurité](#sécurité)
+- [Documentation supplémentaire](#documentation-supplémentaire)
+
 ## Fonctionnalités
 
 - **Vue d'ensemble** : Indicateurs clés de performance (KPI) globaux
@@ -19,6 +30,10 @@ Le dashboard est basé sur une architecture moderne utilisant :
 - **État global** : Redux pour la gestion d'état
 - **Visualisations** : Recharts pour les graphiques et visualisations
 - **Communication** : Axios pour les appels API REST et Socket.io pour les mises à jour en temps réel
+
+### Backend
+
+Le backend du dashboard est construit avec Node.js et Express.js. Il agit comme une couche d'abstraction qui communique avec les autres modules du système et fournit une API RESTful et des WebSockets pour le frontend.
 
 ## Structure du projet
 
@@ -57,16 +72,9 @@ Le dashboard est basé sur une architecture moderne utilisant :
 │   ├── unit/                 # Tests unitaires
 │   └── integration/          # Tests d'intégration
 │
-├── docs/                     # Documentation supplémentaire
-│   ├── architecture/         # Diagrammes d'architecture
-│   ├── api/                  # Documentation API
-│   └── user-guide/           # Guide utilisateur
-│
-├── .env.example              # Exemple de fichier d'environnement
-├── .gitignore                # Fichiers ignorés par Git
-├── docker-compose.yml        # Configuration Docker Compose
 ├── Dockerfile                # Instructions de build Docker
-├── DASHBOARD.md              # Documentation principale du dashboard
+├── docker-compose.yml        # Configuration Docker Compose
+├── DASHBOARD.md              # Documentation technique du dashboard
 └── README.md                 # Ce fichier
 ```
 
@@ -165,11 +173,6 @@ Pour plus de détails, consultez :
 - [DASHBOARD.md](./DASHBOARD.md) - Documentation technique complète
 - [frontend/README.md](./frontend/README.md) - Guide du développement frontend
 - [backend/README.md](./backend/README.md) - Guide du développement backend
-- [docs/](./docs/) - Documentation utilisateur et diagrammes d'architecture
-
-## Contribution
-
-Pour contribuer au développement du dashboard, veuillez consulter le fichier [CONTRIBUTING.md](../CONTRIBUTING.md) à la racine du dépôt principal.
 
 ## Licence
 

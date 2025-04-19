@@ -1,0 +1,215 @@
+{
+  "app": {
+    "title": "Le Vieux Moulin - Dashboard"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "refresh": "Rafraîchir",
+    "more": "Plus",
+    "search": "Rechercher",
+    "export": "Exporter",
+    "print": "Imprimer",
+    "filters": "Filtres",
+    "customDateRange": "Période personnalisée",
+    "notifications": "Notifications",
+    "userMenu": "Menu utilisateur"
+  },
+  "navigation": {
+    "dashboard": "Tableau de bord",
+    "sales": "Ventes",
+    "stock": "Stocks",
+    "marketing": "Marketing",
+    "finance": "Finance",
+    "staff": "Personnel",
+    "settings": "Paramètres"
+  },
+  "dashboard": {
+    "welcome": "Tableau de bord",
+    "lastUpdate": "Dernière mise à jour",
+    "notifications": "Notifications",
+    "settings": "Paramètres",
+    "alerts": "Alertes",
+    "quickActions": "Actions rapides"
+  },
+  "user": {
+    "profile": "Mon profil",
+    "signOut": "Déconnexion"
+  },
+  "timeRange": {
+    "day": "Jour",
+    "week": "Semaine",
+    "month": "Mois",
+    "quarter": "Trimestre",
+    "year": "Année"
+  },
+  "sales": {
+    "title": "Ventes",
+    "overview": "Vue d'ensemble",
+    "products": "Produits",
+    "hourly": "Horaire",
+    "trends": "Tendances",
+    "comparison": "Comparaison",
+    "overview": {
+      "title": "Aperçu des ventes"
+    },
+    "kpi": {
+      "totalSales": "Total des ventes",
+      "customers": "Clients",
+      "averageTicket": "Ticket moyen"
+    },
+    "evolution": "Évolution des ventes",
+    "byCategory": "Ventes par catégorie",
+    "topProducts": "Produits les plus vendus",
+    "seeAll": "Voir tout",
+    "revenue": "Chiffre d'affaires",
+    "customers": "Clients",
+    "productsTabContent": "Analyse détaillée des produits",
+    "hourlyTabContent": "Analyse des ventes par heure",
+    "trendsTabContent": "Analyse des tendances de vente",
+    "comparisonTabContent": "Comparaison des périodes"
+  },
+  "stock": {
+    "title": "Stocks",
+    "overview": "Vue d'ensemble",
+    "inventory": "Inventaire",
+    "orders": "Commandes",
+    "equipment": "Équipements",
+    "history": "Historique",
+    "overview": {
+      "title": "Aperçu des stocks"
+    },
+    "category": {
+      "all": "Tous",
+      "ingredients": "Ingrédients",
+      "drinks": "Boissons",
+      "supplies": "Fournitures"
+    },
+    "status": {
+      "ok": "OK",
+      "warning": "Alerte",
+      "critical": "Critique"
+    },
+    "levels": "Niveaux actuels",
+    "lowLevels": "Niveaux bas",
+    "ordersToPlace": "Commandes à passer",
+    "product": "Produit",
+    "currentLevel": "Niveau actuel",
+    "orderQuantity": "Quantité à commander",
+    "status": "Statut",
+    "current": "Actuel",
+    "min": "Minimum",
+    "critical": "Critique",
+    "seeAll": "Voir tout",
+    "allLevelsOk": "Tous les niveaux sont corrects",
+    "inventoryTabContent": "Inventaire complet des stocks",
+    "ordersTabContent": "Gestion des commandes fournisseurs",
+    "equipmentTabContent": "Statut des équipements",
+    "historyTabContent": "Historique des mouvements de stock"
+  },
+  "marketing": {
+    "title": "Marketing",
+    "overview": "Vue d'ensemble",
+    "campaigns": "Campagnes",
+    "social": "Réseaux sociaux",
+    "promotions": "Promotions",
+    "reviews": "Avis clients",
+    "overview": {
+      "title": "Aperçu marketing"
+    },
+    "bookingChannels": "Canaux de réservation",
+    "recentReviews": "Avis clients récents",
+    "campaignsTabContent": "Gestion des campagnes marketing",
+    "socialTabContent": "Analyse des réseaux sociaux",
+    "promotionsTabContent": "Gestion des offres et promotions",
+    "reviewsTabContent": "Avis et commentaires clients"
+  },
+  "finance": {
+    "title": "Finance",
+    "overview": "Vue d'ensemble",
+    "revenue": "Revenus",
+    "expenses": "Dépenses",
+    "profit": "Bénéfices",
+    "reports": "Rapports",
+    "overview": {
+      "title": "Aperçu financier"
+    },
+    "kpi": {
+      "revenue": "Revenus",
+      "expenses": "Dépenses",
+      "profit": "Bénéfice",
+      "margin": "Marge"
+    },
+    "evolution": "Évolution financière",
+    "expensesBreakdown": "Répartition des dépenses",
+    "productCategories": "Catégories de produits",
+    "category": "Catégorie",
+    "percentage": "Pourcentage",
+    "margin": "Marge",
+    "detailedReports": "Rapports détaillés",
+    "downloadDetailedReport": "Télécharger le rapport détaillé",
+    "exportReport": "Exporter le rapport",
+    "revenueTabContent": "Analyse détaillée des revenus",
+    "expensesTabContent": "Analyse détaillée des dépenses",
+    "profitTabContent": "Analyse des bénéfices et marges",
+    "reportsTabContent": "Rapports financiers"
+  },
+  "staff": {
+    "title": "Personnel",
+    "overview": "Vue d'ensemble",
+    "schedule": "Planning",
+    "performance": "Performance",
+    "hours": "Heures",
+    "costs": "Coûts",
+    "overview": {
+      "title": "Aperçu du personnel"
+    },
+    "currentTeam": "Équipe actuelle",
+    "upcomingShifts": "Prochains services",
+    "staffingVsTraffic": "Personnel vs Affluence",
+    "customers": "Clients",
+    "staffCount": "Personnel",
+    "performanceRating": "Performance",
+    "weeklyHours": "Heures hebdo.",
+    "viewSchedule": "Voir le planning complet",
+    "scheduleTabContent": "Planning du personnel",
+    "performanceTabContent": "Évaluation des performances",
+    "hoursTabContent": "Suivi des heures travaillées",
+    "costsTabContent": "Analyse des coûts du personnel"
+  },
+  "actions": {
+    "inventory": "Inventaire",
+    "inventoryDesc": "Lancer un inventaire",
+    "orders": "Commandes",
+    "ordersDesc": "Gérer les commandes",
+    "marketing": "Marketing",
+    "marketingDesc": "Créer une campagne",
+    "reports": "Rapports",
+    "reportsDesc": "Générer un rapport"
+  },
+  "reservations": {
+    "today": "Réservations du jour",
+    "guests": "couverts",
+    "people": "personnes"
+  },
+  "suggestions": {
+    "title": "Suggestions",
+    "profitMargin": "marge"
+  },
+  "products": {
+    "name": "Produit",
+    "quantity": "Quantité",
+    "total": "Total"
+  },
+  "auth": {
+    "signIn": "Connexion",
+    "email": "Email",
+    "password": "Mot de passe",
+    "rememberMe": "Se souvenir de moi",
+    "forgotPassword": "Mot de passe oublié ?"
+  },
+  "error": {
+    "pageNotFound": "Page non trouvée",
+    "pageNotFoundMessage": "La page que vous recherchez n'existe pas ou a été déplacée.",
+    "backToHome": "Retour à l'accueil"
+  }
+}
