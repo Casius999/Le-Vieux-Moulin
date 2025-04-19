@@ -9,6 +9,9 @@ import marketingReducer from './slices/marketingSlice';
 import financeReducer from './slices/financeSlice';
 import staffReducer from './slices/staffSlice';
 import authReducer from './slices/authSlice';
+import iotReducer from './slices/iotSlice';
+import inventoryReducer from './slices/inventorySlice';
+import forecastReducer from './slices/forecastSlice';
 
 // Import des services API
 import { apiSlice } from './api/apiSlice';
@@ -23,6 +26,9 @@ export const store = configureStore({
     finance: financeReducer,
     staff: staffReducer,
     auth: authReducer,
+    iot: iotReducer,
+    inventory: inventoryReducer,
+    forecast: forecastReducer,
     [apiSlice.reducerPath]: apiSlice.reducer,
   },
   middleware: (getDefaultMiddleware) =>
