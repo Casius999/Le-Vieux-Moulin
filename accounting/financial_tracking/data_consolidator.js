@@ -1,779 +1,983 @@
 /**
  * Module de consolidation des données financières
- * 
- * Ce module centralise la collecte, la consolidation et la validation 
- * des données financières provenant des différents modules du système.
+ * Collecte, agrège et normalise les données financières provenant de diverses sources
+ * pour les rendre exploitables par le module de comptabilité
  */
 
 'use strict';
 
-const { EventEmitter } = require('events');
 const moment = require('moment');
+const { EventEmitter } = require('events');
+const axios = require('axios');
 const _ = require('lodash');
 
 /**
- * Classe principale de consolidation des données
+ * Classe responsable de la consolidation des données financières
+ * @extends EventEmitter
  */
 class DataConsolidator extends EventEmitter {
   /**
-   * Initialise le consolidateur de données
+   * Crée une nouvelle instance du consolidateur de données
    * @param {Object} options - Options de configuration
-   * @param {Object} options.dataCollector - Collecteur de données principal
-   * @param {Object} options.configManager - Gestionnaire de configuration
-   * @param {Object} options.systemIntegrator - Intégrateur système
+   * @param {Object} options.configManager - Instance du gestionnaire de configuration
+   * @param {Object} options.logger - Instance du logger
+   * @param {Object} options.dbPool - Pool de connexion à la base de données
+   * @param {Object} options.systemIntegrator - Instance de l'intégrateur système
    */
   constructor(options = {}) {
     super();
     
-    this.dataCollector = options.dataCollector;
     this.configManager = options.configManager;
+    this.logger = options.logger || console;
+    this.dbPool = options.dbPool;
     this.systemIntegrator = options.systemIntegrator;
     
-    // Configurer les sources de données
-    this.dataSources = this._configureSources();
-    
-    // Initialiser le cache local pour les données fréquemment utilisées
+    // Cache pour les résultats de requêtes fréquentes
     this.cache = {
-      salesSummary: {
-        data: null,
-        timestamp: null,
-        validityPeriod: 15 * 60 * 1000 // 15 minutes en millisecondes
-      },
-      expensesSummary: {
-        data: null, 
-        timestamp: null,
-        validityPeriod: 30 * 60 * 1000 // 30 minutes
-      },
-      inventoryValue: {
-        data: null,
-        timestamp: null,
-        validityPeriod: 60 * 60 * 1000 // 1 heure
-      }
+      transactions: new Map(),
+      expenses: new Map(),
+      inventory: new Map()
     };
+    
+    // Temps d'expiration du cache en millisecondes
+    this.cacheExpiration = options.cacheExpiration || 5 * 60 * 1000; // 5 minutes par défaut
+    
+    // Intervalle de nettoyage du cache
+    this.cacheCleaner = setInterval(() => this._cleanCache(), 15 * 60 * 1000); // 15 minutes
+    
+    this.logger.info('DataConsolidator initialisé');
   }
   
   /**
-   * Configure les sources de données
-   * @returns {Object} - Configuration des sources de données
+   * Nettoie les entrées expirées du cache
    * @private
    */
-  _configureSources() {
-    // Sources par défaut
-    const sources = {
-      sales: {
-        module: 'pos',
-        endpoint: '/api/transactions',
-        dataProcessor: this._processSalesData.bind(this)
-      },
-      expenses: {
-        module: 'purchasing',
-        endpoint: '/api/expenses',
-        dataProcessor: this._processExpensesData.bind(this)
-      },
-      inventory: {
-        module: 'inventory',
-        endpoint: '/api/inventory/current',
-        dataProcessor: this._processInventoryData.bind(this)
-      },
-      staff: {
-        module: 'hr',
-        endpoint: '/api/staff/hours',
-        dataProcessor: this._processStaffData.bind(this)
-      },
-      marketing: {
-        module: 'marketing',
-        endpoint: '/api/campaigns/expenses',
-        dataProcessor: this._processMarketingData.bind(this)
+  _cleanCache() {
+    const now = Date.now();
+    
+    // Pour chaque type de données en cache
+    for (const [cacheType, cacheMap] of Object.entries(this.cache)) {
+      // Parcourir les entrées et supprimer celles qui sont expirées
+      for (const [key, entry] of cacheMap.entries()) {
+        if (now > entry.expiration) {
+          cacheMap.delete(key);
+          this.logger.debug(`Cache nettoyé: ${cacheType} - ${key}`);
+        }
       }
-    };
-    
-    // Charger la configuration personnalisée si disponible
-    if (this.configManager) {
-      const customSources = this.configManager.getConfig('accounting.dataSources', {});
-      
-      // Fusionner avec les sources par défaut
-      return _.merge({}, sources, customSources);
     }
-    
-    return sources;
   }
   
   /**
-   * Récupère et consolide les données financières pour une période donnée
-   * @param {Object} options - Options de consolidation
-   * @param {Date|string} options.startDate - Date de début de la période
-   * @param {Date|string} options.endDate - Date de fin de la période
-   * @param {Array<string>} options.sources - Sources à inclure (toutes par défaut)
-   * @param {boolean} options.forceRefresh - Forcer le rafraîchissement du cache
-   * @returns {Promise<Object>} - Données financières consolidées
+   * Génère une clé de cache pour une requête
+   * @param {string} type - Type de données
+   * @param {Object} params - Paramètres de la requête
+   * @returns {string} Clé de cache
+   * @private
    */
-  async consolidateFinancialData(options = {}) {
-    const startDate = options.startDate ? moment(options.startDate) : moment().startOf('day');
-    const endDate = options.endDate ? moment(options.endDate) : moment().endOf('day');
-    const sources = options.sources || Object.keys(this.dataSources);
-    const forceRefresh = options.forceRefresh || false;
+  _generateCacheKey(type, params) {
+    return `${type}_${JSON.stringify(params)}`;
+  }
+  
+  /**
+   * Vérifie si une entrée est présente dans le cache et non expirée
+   * @param {string} type - Type de données
+   * @param {string} key - Clé de cache
+   * @returns {boolean} True si l'entrée est valide dans le cache
+   * @private
+   */
+  _isCacheValid(type, key) {
+    if (!this.cache[type].has(key)) {
+      return false;
+    }
     
+    const entry = this.cache[type].get(key);
+    return Date.now() <= entry.expiration;
+  }
+  
+  /**
+   * Récupère une entrée du cache
+   * @param {string} type - Type de données
+   * @param {string} key - Clé de cache
+   * @returns {*} Données en cache ou null si non trouvées ou expirées
+   * @private
+   */
+  _getFromCache(type, key) {
+    if (this._isCacheValid(type, key)) {
+      return this.cache[type].get(key).data;
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Stocke une entrée dans le cache
+   * @param {string} type - Type de données
+   * @param {string} key - Clé de cache
+   * @param {*} data - Données à mettre en cache
+   * @private
+   */
+  _storeInCache(type, key, data) {
+    this.cache[type].set(key, {
+      data,
+      expiration: Date.now() + this.cacheExpiration
+    });
+  }
+  
+  /**
+   * Récupère les transactions financières pour une période donnée
+   * @param {Object} params - Paramètres de la requête
+   * @param {Date|string} params.startDate - Date de début
+   * @param {Date|string} params.endDate - Date de fin
+   * @param {string} [params.category] - Catégorie de produit (optionnel)
+   * @param {boolean} [params.useCache=true] - Utiliser le cache si disponible
+   * @returns {Promise<Array>} Liste des transactions
+   */
+  async getTransactions(params = {}) {
     try {
-      // Objet pour stocker les données consolidées
-      const consolidatedData = {
-        period: {
-          start: startDate.toDate(),
-          end: endDate.toDate(),
-          durationDays: endDate.diff(startDate, 'days') + 1
-        },
-        sources: {},
-        summary: {},
-        metadata: {
-          generatedAt: new Date(),
-          dataQuality: {
-            completeness: 0,
-            consistency: 0,
-            warnings: []
-          }
-        }
+      // Normaliser les dates
+      const startDate = params.startDate instanceof Date 
+        ? params.startDate 
+        : new Date(params.startDate);
+      
+      const endDate = params.endDate instanceof Date 
+        ? params.endDate 
+        : new Date(params.endDate);
+      
+      // Vérifier la validité des dates
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        throw new Error('Dates invalides fournies pour la requête de transactions');
+      }
+      
+      // Paramètres de filtrage
+      const queryParams = {
+        startDate: moment(startDate).format('YYYY-MM-DD'),
+        endDate: moment(endDate).format('YYYY-MM-DD')
       };
       
-      // Récupérer les données de chaque source
-      for (const sourceName of sources) {
-        if (!this.dataSources[sourceName]) {
-          console.warn(`Source de données non configurée: ${sourceName}`);
-          continue;
-        }
-        
-        try {
-          // Récupérer et traiter les données
-          const sourceData = await this._fetchSourceData(sourceName, {
-            startDate: startDate.format('YYYY-MM-DD'),
-            endDate: endDate.format('YYYY-MM-DD'),
-            forceRefresh
-          });
-          
-          consolidatedData.sources[sourceName] = sourceData;
-        } catch (error) {
-          console.error(`Erreur lors de la récupération des données depuis ${sourceName}:`, error);
-          
-          consolidatedData.metadata.dataQuality.warnings.push({
-            source: sourceName,
-            error: error.message,
-            impact: 'missing_data'
-          });
+      if (params.category) {
+        queryParams.category = params.category;
+      }
+      
+      // Vérifier le cache si activé
+      const useCache = params.useCache !== false;
+      const cacheKey = this._generateCacheKey('transactions', queryParams);
+      
+      if (useCache) {
+        const cachedData = this._getFromCache('transactions', cacheKey);
+        if (cachedData) {
+          this.logger.debug(`Utilisation du cache pour transactions: ${cacheKey}`);
+          return cachedData;
         }
       }
       
-      // Générer les récapitulatifs
-      consolidatedData.summary = this._generateSummary(consolidatedData);
+      // Récupérer les données depuis la base de données
+      const transactions = await this._fetchTransactionsFromDb(queryParams);
       
-      // Évaluer la qualité des données
-      this._evaluateDataQuality(consolidatedData);
+      // Enrichir les transactions avec des données supplémentaires
+      const enrichedTransactions = await this._enrichTransactions(transactions);
       
-      // Émettre un événement de consolidation terminée
-      this.emit('data:consolidated', {
-        period: consolidatedData.period,
-        summary: consolidatedData.summary
-      });
+      // Mettre en cache si activé
+      if (useCache) {
+        this._storeInCache('transactions', cacheKey, enrichedTransactions);
+      }
       
-      return consolidatedData;
+      return enrichedTransactions;
     } catch (error) {
-      console.error('Erreur lors de la consolidation des données financières:', error);
-      
-      // Émettre un événement d'erreur
-      this.emit('data:consolidation_error', {
-        period: {
-          start: startDate.toDate(),
-          end: endDate.toDate()
-        },
-        error: error.message
-      });
-      
+      this.logger.error('Erreur lors de la récupération des transactions:', error);
       throw error;
     }
   }
   
   /**
-   * Récupère les données d'une source spécifique
-   * @param {string} sourceName - Nom de la source
-   * @param {Object} options - Options de récupération
-   * @returns {Promise<Object>} - Données de la source
+   * Récupère les transactions depuis la base de données
+   * @param {Object} params - Paramètres de la requête
+   * @returns {Promise<Array>} Liste des transactions
    * @private
    */
-  async _fetchSourceData(sourceName, options = {}) {
-    const source = this.dataSources[sourceName];
-    const forceRefresh = options.forceRefresh || false;
-    
-    // Vérifier si les données sont en cache et valides
-    if (!forceRefresh && this.cache[sourceName] && this.cache[sourceName].data) {
-      const now = Date.now();
-      const cacheAge = now - this.cache[sourceName].timestamp;
+  async _fetchTransactionsFromDb(params) {
+    // Si un pool de connexion est disponible, utiliser la base de données
+    if (this.dbPool) {
+      const { startDate, endDate, category } = params;
       
-      if (cacheAge < this.cache[sourceName].validityPeriod) {
-        return this.cache[sourceName].data;
+      let query = `
+        SELECT 
+          t.id, t.date, t.total, t.tax_total AS taxTotal,
+          t.payment_method AS paymentMethod, t.covers,
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id', ti.id,
+              'name', ti.name,
+              'quantity', ti.quantity,
+              'price', ti.price,
+              'total', ti.total,
+              'tax_rate', ti.tax_rate,
+              'category', tc.name
+            )
+          ) AS items
+        FROM 
+          transactions t
+        LEFT JOIN 
+          transaction_items ti ON t.id = ti.transaction_id
+        LEFT JOIN 
+          transaction_categories tc ON ti.category_id = tc.id
+        WHERE 
+          t.date BETWEEN $1 AND $2
+      `;
+      
+      const queryParams = [startDate, endDate];
+      
+      // Ajouter le filtre par catégorie si nécessaire
+      if (category) {
+        query += " AND tc.name = $3";
+        queryParams.push(category);
+      }
+      
+      query += `
+        GROUP BY 
+          t.id
+        ORDER BY 
+          t.date
+      `;
+      
+      const client = await this.dbPool.connect();
+      
+      try {
+        const result = await client.query(query, queryParams);
+        return result.rows;
+      } finally {
+        client.release();
       }
     }
     
-    // Construire les paramètres de requête
-    const queryParams = {
-      startDate: options.startDate,
-      endDate: options.endDate
-    };
-    
-    // Récupérer les données via l'intégrateur système
-    const rawData = await this.systemIntegrator.callModuleApi(
-      source.module,
-      source.endpoint,
-      queryParams,
-      { method: 'get' }
-    );
-    
-    // Traiter les données avec le processeur spécifique à la source
-    const processedData = source.dataProcessor(rawData, options);
-    
-    // Mettre en cache les données
-    if (this.cache[sourceName]) {
-      this.cache[sourceName].data = processedData;
-      this.cache[sourceName].timestamp = Date.now();
+    // Sinon, utiliser l'intégrateur système pour récupérer les données
+    if (this.systemIntegrator) {
+      return this.systemIntegrator.fetchTransactions(params);
     }
     
-    return processedData;
+    // Si aucune source n'est disponible, retourner un tableau vide
+    this.logger.warn('Aucune source de données disponible pour les transactions');
+    return [];
   }
   
   /**
-   * Traite les données de ventes
-   * @param {Object} rawData - Données brutes
-   * @param {Object} options - Options de traitement
-   * @returns {Object} - Données traitées
+   * Enrichit les transactions avec des données supplémentaires
+   * @param {Array} transactions - Liste des transactions
+   * @returns {Promise<Array>} Transactions enrichies
    * @private
    */
-  _processSalesData(rawData, options = {}) {
-    // Exemple de traitement des données de ventes
-    const processedData = {
-      totalSales: 0,
-      byCategory: {},
-      byPaymentMethod: {},
-      byService: {
-        lunch: { total: 0, count: 0 },
-        dinner: { total: 0, count: 0 }
-      },
-      averageTicket: 0,
-      transactions: []
-    };
-    
-    if (!rawData || !rawData.transactions || !Array.isArray(rawData.transactions)) {
-      return processedData;
-    }
-    
-    // Traiter chaque transaction
-    rawData.transactions.forEach(transaction => {
-      // Ajouter au total
-      processedData.totalSales += transaction.total;
+  async _enrichTransactions(transactions) {
+    try {
+      // Récupérer les méthodes de paiement pour chaque transaction
+      const transactionIds = transactions.map(tx => tx.id);
+      const payments = await this._fetchPaymentsByTransactionIds(transactionIds);
       
-      // Ajouter à la catégorie
-      const category = transaction.category || 'unknown';
-      if (!processedData.byCategory[category]) {
-        processedData.byCategory[category] = { total: 0, count: 0 };
-      }
-      processedData.byCategory[category].total += transaction.total;
-      processedData.byCategory[category].count++;
-      
-      // Ajouter au mode de paiement
-      const paymentMethod = transaction.paymentMethod || 'unknown';
-      if (!processedData.byPaymentMethod[paymentMethod]) {
-        processedData.byPaymentMethod[paymentMethod] = { total: 0, count: 0 };
-      }
-      processedData.byPaymentMethod[paymentMethod].total += transaction.total;
-      processedData.byPaymentMethod[paymentMethod].count++;
-      
-      // Déterminer le service (déjeuner/dîner)
-      const transactionTime = moment(transaction.timestamp);
-      const service = transactionTime.hour() < 16 ? 'lunch' : 'dinner';
-      processedData.byService[service].total += transaction.total;
-      processedData.byService[service].count++;
-      
-      // Ajouter la transaction traitée
-      processedData.transactions.push({
-        id: transaction.id,
-        timestamp: transaction.timestamp,
-        total: transaction.total,
-        items: transaction.items.length,
-        service,
-        paymentMethod,
-        category
+      // Associer les paiements aux transactions
+      return transactions.map(transaction => {
+        const txPayments = payments.filter(p => p.transactionId === transaction.id);
+        
+        return {
+          ...transaction,
+          payments: txPayments
+        };
       });
-    });
-    
-    // Calculer le ticket moyen
-    const totalTransactions = processedData.transactions.length;
-    processedData.averageTicket = totalTransactions > 0 ? 
-      processedData.totalSales / totalTransactions : 0;
-    
-    return processedData;
+    } catch (error) {
+      this.logger.error('Erreur lors de l\'enrichissement des transactions:', error);
+      return transactions; // Retourner les transactions non enrichies en cas d'erreur
+    }
   }
   
   /**
-   * Traite les données de dépenses
-   * @param {Object} rawData - Données brutes
-   * @param {Object} options - Options de traitement
-   * @returns {Object} - Données traitées
+   * Récupère les paiements pour une liste de transactions
+   * @param {string[]} transactionIds - IDs des transactions
+   * @returns {Promise<Array>} Liste des paiements
    * @private
    */
-  _processExpensesData(rawData, options = {}) {
-    // Exemple de traitement des données de dépenses
-    const processedData = {
-      totalExpenses: 0,
-      byCategory: {},
-      byVendor: {},
-      fixedCosts: 0,
-      variableCosts: 0,
-      expenses: []
-    };
-    
-    if (!rawData || !rawData.expenses || !Array.isArray(rawData.expenses)) {
-      return processedData;
+  async _fetchPaymentsByTransactionIds(transactionIds) {
+    if (!transactionIds || transactionIds.length === 0) {
+      return [];
     }
     
-    // Traiter chaque dépense
-    rawData.expenses.forEach(expense => {
-      // Ajouter au total
-      processedData.totalExpenses += expense.amount;
+    // Si un pool de connexion est disponible, utiliser la base de données
+    if (this.dbPool) {
+      const client = await this.dbPool.connect();
       
-      // Ajouter à la catégorie
-      const category = expense.category || 'unknown';
-      if (!processedData.byCategory[category]) {
-        processedData.byCategory[category] = { total: 0, count: 0 };
+      try {
+        const query = `
+          SELECT 
+            id, transaction_id AS "transactionId", method, amount, type, 
+            created_at AS "createdAt"
+          FROM 
+            payments
+          WHERE 
+            transaction_id = ANY($1)
+        `;
+        
+        const result = await client.query(query, [transactionIds]);
+        return result.rows;
+      } finally {
+        client.release();
       }
-      processedData.byCategory[category].total += expense.amount;
-      processedData.byCategory[category].count++;
+    }
+    
+    // Sinon, utiliser l'intégrateur système
+    if (this.systemIntegrator) {
+      return this.systemIntegrator.fetchPaymentsByTransactions(transactionIds);
+    }
+    
+    // Si aucune source n'est disponible, retourner un tableau vide
+    return [];
+  }
+  
+  /**
+   * Récupère les dépenses pour une période donnée
+   * @param {Object} params - Paramètres de la requête
+   * @param {Date|string} params.startDate - Date de début
+   * @param {Date|string} params.endDate - Date de fin
+   * @param {string} [params.category] - Catégorie de dépense (optionnel)
+   * @param {boolean} [params.useCache=true] - Utiliser le cache si disponible
+   * @returns {Promise<Array>} Liste des dépenses
+   */
+  async getExpenses(params = {}) {
+    try {
+      // Normaliser les dates
+      const startDate = params.startDate instanceof Date 
+        ? params.startDate 
+        : new Date(params.startDate);
       
-      // Ajouter au fournisseur
-      const vendor = expense.vendor || 'unknown';
-      if (!processedData.byVendor[vendor]) {
-        processedData.byVendor[vendor] = { total: 0, count: 0 };
+      const endDate = params.endDate instanceof Date 
+        ? params.endDate 
+        : new Date(params.endDate);
+      
+      // Vérifier la validité des dates
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        throw new Error('Dates invalides fournies pour la requête de dépenses');
       }
-      processedData.byVendor[vendor].total += expense.amount;
-      processedData.byVendor[vendor].count++;
       
-      // Déterminer si c'est un coût fixe ou variable
-      if (expense.costType === 'fixed') {
-        processedData.fixedCosts += expense.amount;
+      // Paramètres de filtrage
+      const queryParams = {
+        startDate: moment(startDate).format('YYYY-MM-DD'),
+        endDate: moment(endDate).format('YYYY-MM-DD')
+      };
+      
+      if (params.category) {
+        queryParams.category = params.category;
+      }
+      
+      // Vérifier le cache si activé
+      const useCache = params.useCache !== false;
+      const cacheKey = this._generateCacheKey('expenses', queryParams);
+      
+      if (useCache) {
+        const cachedData = this._getFromCache('expenses', cacheKey);
+        if (cachedData) {
+          this.logger.debug(`Utilisation du cache pour dépenses: ${cacheKey}`);
+          return cachedData;
+        }
+      }
+      
+      // Récupérer les données depuis la base de données
+      const expenses = await this._fetchExpensesFromDb(queryParams);
+      
+      // Mettre en cache si activé
+      if (useCache) {
+        this._storeInCache('expenses', cacheKey, expenses);
+      }
+      
+      return expenses;
+    } catch (error) {
+      this.logger.error('Erreur lors de la récupération des dépenses:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Récupère les dépenses depuis la base de données
+   * @param {Object} params - Paramètres de la requête
+   * @returns {Promise<Array>} Liste des dépenses
+   * @private
+   */
+  async _fetchExpensesFromDb(params) {
+    // Si un pool de connexion est disponible, utiliser la base de données
+    if (this.dbPool) {
+      const { startDate, endDate, category } = params;
+      
+      let query = `
+        SELECT 
+          e.id, e.date, e.amount, e.description, 
+          e.reference_number AS "referenceNumber",
+          e.payment_method AS "paymentMethod",
+          ec.name AS category
+        FROM 
+          expenses e
+        LEFT JOIN 
+          expense_categories ec ON e.category_id = ec.id
+        WHERE 
+          e.date BETWEEN $1 AND $2
+      `;
+      
+      const queryParams = [startDate, endDate];
+      
+      // Ajouter le filtre par catégorie si nécessaire
+      if (category) {
+        query += " AND ec.name = $3";
+        queryParams.push(category);
+      }
+      
+      query += `
+        ORDER BY 
+          e.date
+      `;
+      
+      const client = await this.dbPool.connect();
+      
+      try {
+        const result = await client.query(query, queryParams);
+        return result.rows;
+      } finally {
+        client.release();
+      }
+    }
+    
+    // Sinon, utiliser l'intégrateur système
+    if (this.systemIntegrator) {
+      return this.systemIntegrator.fetchExpenses(params);
+    }
+    
+    // Si aucune source n'est disponible, retourner un tableau vide
+    this.logger.warn('Aucune source de données disponible pour les dépenses');
+    return [];
+  }
+  
+  /**
+   * Récupère les mouvements de stock pour une période donnée
+   * @param {Object} params - Paramètres de la requête
+   * @param {Date|string} params.startDate - Date de début
+   * @param {Date|string} params.endDate - Date de fin
+   * @param {string} [params.productId] - ID du produit (optionnel)
+   * @param {string} [params.type] - Type de mouvement (PURCHASE, CONSUMPTION, ADJUSTMENT, etc.)
+   * @param {boolean} [params.useCache=true] - Utiliser le cache si disponible
+   * @returns {Promise<Array>} Liste des mouvements de stock
+   */
+  async getInventoryMovements(params = {}) {
+    try {
+      // Normaliser les dates
+      const startDate = params.startDate instanceof Date 
+        ? params.startDate 
+        : new Date(params.startDate);
+      
+      const endDate = params.endDate instanceof Date 
+        ? params.endDate 
+        : new Date(params.endDate);
+      
+      // Vérifier la validité des dates
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        throw new Error('Dates invalides fournies pour la requête de mouvements de stock');
+      }
+      
+      // Paramètres de filtrage
+      const queryParams = {
+        startDate: moment(startDate).format('YYYY-MM-DD'),
+        endDate: moment(endDate).format('YYYY-MM-DD')
+      };
+      
+      if (params.productId) {
+        queryParams.productId = params.productId;
+      }
+      
+      if (params.type) {
+        queryParams.type = params.type;
+      }
+      
+      // Vérifier le cache si activé
+      const useCache = params.useCache !== false;
+      const cacheKey = this._generateCacheKey('inventory', queryParams);
+      
+      if (useCache) {
+        const cachedData = this._getFromCache('inventory', cacheKey);
+        if (cachedData) {
+          this.logger.debug(`Utilisation du cache pour mouvements de stock: ${cacheKey}`);
+          return cachedData;
+        }
+      }
+      
+      // Récupérer les données depuis la base de données ou l'intégrateur
+      const movements = await this._fetchInventoryMovementsFromSource(queryParams);
+      
+      // Mettre en cache si activé
+      if (useCache) {
+        this._storeInCache('inventory', cacheKey, movements);
+      }
+      
+      return movements;
+    } catch (error) {
+      this.logger.error('Erreur lors de la récupération des mouvements de stock:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Récupère les mouvements de stock depuis la source de données appropriée
+   * @param {Object} params - Paramètres de la requête
+   * @returns {Promise<Array>} Liste des mouvements de stock
+   * @private
+   */
+  async _fetchInventoryMovementsFromSource(params) {
+    // Si un pool de connexion est disponible, utiliser la base de données
+    if (this.dbPool) {
+      const { startDate, endDate, productId, type } = params;
+      
+      let query = `
+        SELECT 
+          im.id, im.date, im.type, 
+          im.product_id AS "productId",
+          p.name AS "productName",
+          im.quantity, im.unit_cost AS "unitCost",
+          im.quantity * im.unit_cost AS cost,
+          im.reference_id AS "referenceId",
+          im.reference_type AS "referenceType",
+          im.notes
+        FROM 
+          inventory_movements im
+        JOIN 
+          products p ON im.product_id = p.id
+        WHERE 
+          im.date BETWEEN $1 AND $2
+      `;
+      
+      const queryParams = [startDate, endDate];
+      let paramIndex = 3;
+      
+      // Ajouter le filtre par produit si nécessaire
+      if (productId) {
+        query += ` AND im.product_id = $${paramIndex}`;
+        queryParams.push(productId);
+        paramIndex++;
+      }
+      
+      // Ajouter le filtre par type si nécessaire
+      if (type) {
+        query += ` AND im.type = $${paramIndex}`;
+        queryParams.push(type);
+      }
+      
+      query += `
+        ORDER BY 
+          im.date
+      `;
+      
+      const client = await this.dbPool.connect();
+      
+      try {
+        const result = await client.query(query, queryParams);
+        return result.rows;
+      } finally {
+        client.release();
+      }
+    }
+    
+    // Sinon, utiliser l'intégrateur système
+    if (this.systemIntegrator) {
+      return this.systemIntegrator.fetchInventoryMovements(params);
+    }
+    
+    // Si aucune source n'est disponible, retourner un tableau vide
+    this.logger.warn('Aucune source de données disponible pour les mouvements de stock');
+    return [];
+  }
+  
+  /**
+   * Récupère le résumé de stock pour une période donnée
+   * @param {Object} params - Paramètres de la requête
+   * @param {Date|string} params.startDate - Date de début
+   * @param {Date|string} params.endDate - Date de fin
+   * @param {boolean} [params.useCache=true] - Utiliser le cache si disponible
+   * @returns {Promise<Object>} Résumé du stock
+   */
+  async getInventorySummary(params = {}) {
+    try {
+      // Récupérer les mouvements de stock pour la période
+      const movements = await this.getInventoryMovements(params);
+      
+      // Calculer les valeurs d'ouverture et de clôture
+      const startDate = params.startDate instanceof Date 
+        ? params.startDate 
+        : new Date(params.startDate);
+      
+      const openingInventoryValue = await this._calculateInventoryValueAtDate(startDate);
+      
+      // Agréger les mouvements par type
+      const aggregatedMovements = _.groupBy(movements, 'type');
+      
+      // Calculer les totaux par type
+      const movementSummary = {};
+      
+      for (const [type, typeMovements] of Object.entries(aggregatedMovements)) {
+        movementSummary[type] = {
+          count: typeMovements.length,
+          totalQuantity: _.sumBy(typeMovements, 'quantity'),
+          totalCost: _.sumBy(typeMovements, 'cost')
+        };
+      }
+      
+      // Calculer la valeur totale de consommation
+      const consumption = movementSummary.CONSUMPTION || { totalCost: 0 };
+      const purchases = movementSummary.PURCHASE || { totalCost: 0 };
+      const adjustments = movementSummary.ADJUSTMENT || { totalCost: 0 };
+      
+      // Calculer la valeur de clôture
+      const closingInventoryValue = openingInventoryValue + 
+        purchases.totalCost - 
+        consumption.totalCost + 
+        adjustments.totalCost;
+      
+      // Calculer la valeur moyenne du stock sur la période
+      const averageInventoryValue = (openingInventoryValue + closingInventoryValue) / 2;
+      
+      return {
+        period: {
+          startDate: moment(startDate).format('YYYY-MM-DD'),
+          endDate: moment(params.endDate).format('YYYY-MM-DD')
+        },
+        openingInventoryValue,
+        closingInventoryValue,
+        averageInventoryValue,
+        movements: movementSummary,
+        totalConsumption: consumption.totalCost,
+        totalPurchases: purchases.totalCost,
+        totalAdjustments: adjustments.totalCost
+      };
+    } catch (error) {
+      this.logger.error('Erreur lors de la récupération du résumé de stock:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Calcule la valeur de stock à une date donnée
+   * @param {Date} date - Date de référence
+   * @returns {Promise<number>} Valeur du stock
+   * @private
+   */
+  async _calculateInventoryValueAtDate(date) {
+    try {
+      // Si un pool de connexion est disponible, utiliser la base de données
+      if (this.dbPool) {
+        const client = await this.dbPool.connect();
+        
+        try {
+          // Requête pour calculer la valeur du stock à une date donnée
+          const query = `
+            SELECT 
+              COALESCE(SUM(
+                CASE 
+                  WHEN im.type = 'PURCHASE' THEN im.quantity * im.unit_cost
+                  WHEN im.type = 'CONSUMPTION' THEN -1 * im.quantity * im.unit_cost
+                  WHEN im.type = 'ADJUSTMENT' THEN im.quantity * im.unit_cost
+                  ELSE 0
+                END
+              ), 0) AS stock_value
+            FROM 
+              inventory_movements im
+            WHERE 
+              im.date <= $1
+          `;
+          
+          const result = await client.query(query, [moment(date).format('YYYY-MM-DD')]);
+          return parseFloat(result.rows[0].stock_value);
+        } finally {
+          client.release();
+        }
+      }
+      
+      // Sinon, utiliser l'intégrateur système
+      if (this.systemIntegrator) {
+        return this.systemIntegrator.getInventoryValueAtDate(date);
+      }
+      
+      // Si aucune source n'est disponible, retourner 0
+      this.logger.warn('Aucune source de données disponible pour la valeur de stock');
+      return 0;
+    } catch (error) {
+      this.logger.error('Erreur lors du calcul de la valeur de stock:', error);
+      return 0;
+    }
+  }
+  
+  /**
+   * Récupère les coûts de main d'œuvre pour une période donnée
+   * @param {Object} params - Paramètres de la requête
+   * @param {Date|string} params.startDate - Date de début
+   * @param {Date|string} params.endDate - Date de fin
+   * @param {boolean} [params.useCache=true] - Utiliser le cache si disponible
+   * @returns {Promise<Object>} Résumé des coûts de main d'œuvre
+   */
+  async getLaborCosts(params = {}) {
+    try {
+      // Si un pool de connexion est disponible, utiliser la base de données
+      if (this.dbPool) {
+        const { startDate, endDate } = params;
+        
+        const client = await this.dbPool.connect();
+        
+        try {
+          // Requête pour récupérer les heures travaillées
+          const hoursQuery = `
+            SELECT 
+              s.staff_id, 
+              p.name, 
+              p.hourly_rate AS "hourlyRate",
+              SUM(EXTRACT(EPOCH FROM (s.end_time - s.start_time)) / 3600) AS hours_worked,
+              SUM(EXTRACT(EPOCH FROM (s.end_time - s.start_time)) / 3600 * p.hourly_rate) AS labor_cost
+            FROM 
+              shifts s
+            JOIN 
+              personnel p ON s.staff_id = p.id
+            WHERE 
+              s.date BETWEEN $1 AND $2
+            GROUP BY 
+              s.staff_id, p.name, p.hourly_rate
+            ORDER BY 
+              p.name
+          `;
+          
+          const hoursResult = await client.query(hoursQuery, [
+            moment(startDate).format('YYYY-MM-DD'),
+            moment(endDate).format('YYYY-MM-DD')
+          ]);
+          
+          // Requête pour récupérer les coûts fixes (salaires mensuels, etc.)
+          const fixedCostsQuery = `
+            SELECT 
+              SUM(amount) AS fixed_costs
+            FROM 
+              payroll_fixed_costs
+            WHERE 
+              period_start <= $2 AND period_end >= $1
+          `;
+          
+          const fixedCostsResult = await client.query(fixedCostsQuery, [
+            moment(startDate).format('YYYY-MM-DD'),
+            moment(endDate).format('YYYY-MM-DD')
+          ]);
+          
+          // Calculer le coût total
+          const hourlyLaborCost = hoursResult.rows.reduce((sum, row) => sum + parseFloat(row.labor_cost), 0);
+          const fixedLaborCost = parseFloat(fixedCostsResult.rows[0]?.fixed_costs || 0);
+          const totalCost = hourlyLaborCost + fixedLaborCost;
+          
+          return {
+            period: {
+              startDate: moment(startDate).format('YYYY-MM-DD'),
+              endDate: moment(endDate).format('YYYY-MM-DD')
+            },
+            hourlyStaff: hoursResult.rows,
+            totalHourlyLaborCost: hourlyLaborCost,
+            fixedLaborCost,
+            totalCost
+          };
+        } finally {
+          client.release();
+        }
+      }
+      
+      // Sinon, utiliser l'intégrateur système
+      if (this.systemIntegrator) {
+        return this.systemIntegrator.getLaborCosts(params);
+      }
+      
+      // Si aucune source n'est disponible, retourner un objet vide
+      this.logger.warn('Aucune source de données disponible pour les coûts de main d\'œuvre');
+      return {
+        period: {
+          startDate: moment(params.startDate).format('YYYY-MM-DD'),
+          endDate: moment(params.endDate).format('YYYY-MM-DD')
+        },
+        hourlyStaff: [],
+        totalHourlyLaborCost: 0,
+        fixedLaborCost: 0,
+        totalCost: 0
+      };
+    } catch (error) {
+      this.logger.error('Erreur lors de la récupération des coûts de main d\'œuvre:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Récupère le planning du personnel pour une période donnée
+   * @param {Object} params - Paramètres de la requête
+   * @param {Date|string} params.startDate - Date de début
+   * @param {Date|string} params.endDate - Date de fin
+   * @param {string} [params.staffId] - ID du membre du personnel (optionnel)
+   * @returns {Promise<Array>} Planning du personnel
+   */
+  async getStaffSchedule(params = {}) {
+    try {
+      // Si un pool de connexion est disponible, utiliser la base de données
+      if (this.dbPool) {
+        const { startDate, endDate, staffId } = params;
+        
+        let query = `
+          SELECT 
+            s.id, s.date, s.start_time AS "startTime", s.end_time AS "endTime",
+            s.staff_id AS "staffId", p.name AS "staffName",
+            p.hourly_rate AS "hourlyRate",
+            EXTRACT(EPOCH FROM (s.end_time - s.start_time)) / 3600 AS hours,
+            (EXTRACT(EPOCH FROM (s.end_time - s.start_time)) / 3600) * p.hourly_rate AS cost,
+            s.role, s.notes
+          FROM 
+            shifts s
+          JOIN 
+            personnel p ON s.staff_id = p.id
+          WHERE 
+            s.date BETWEEN $1 AND $2
+        `;
+        
+        const queryParams = [
+          moment(startDate).format('YYYY-MM-DD'),
+          moment(endDate).format('YYYY-MM-DD')
+        ];
+        
+        // Ajouter le filtre par membre du personnel si nécessaire
+        if (staffId) {
+          query += " AND s.staff_id = $3";
+          queryParams.push(staffId);
+        }
+        
+        query += `
+          ORDER BY 
+            s.date, s.start_time
+        `;
+        
+        const client = await this.dbPool.connect();
+        
+        try {
+          const result = await client.query(query, queryParams);
+          return result.rows;
+        } finally {
+          client.release();
+        }
+      }
+      
+      // Sinon, utiliser l'intégrateur système
+      if (this.systemIntegrator) {
+        return this.systemIntegrator.getStaffSchedule(params);
+      }
+      
+      // Si aucune source n'est disponible, retourner un tableau vide
+      this.logger.warn('Aucune source de données disponible pour le planning du personnel');
+      return [];
+    } catch (error) {
+      this.logger.error('Erreur lors de la récupération du planning du personnel:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Récupère les données consolidées pour un rapport financier complet
+   * @param {Object} params - Paramètres de la requête
+   * @param {Date|string} params.startDate - Date de début
+   * @param {Date|string} params.endDate - Date de fin
+   * @param {boolean} [params.includeInventory=true] - Inclure les données d'inventaire
+   * @param {boolean} [params.includeLaborCosts=true] - Inclure les coûts de main d'œuvre
+   * @returns {Promise<Object>} Données consolidées
+   */
+  async getConsolidatedFinancialData(params = {}) {
+    try {
+      const { 
+        startDate, 
+        endDate, 
+        includeInventory = true, 
+        includeLaborCosts = true 
+      } = params;
+      
+      // Récupérer les données de base
+      const transactions = await this.getTransactions({ startDate, endDate });
+      const expenses = await this.getExpenses({ startDate, endDate });
+      
+      // Calculer les totaux de vente
+      const totalSales = transactions.reduce((sum, tx) => sum + tx.total, 0);
+      const ticketCount = transactions.length;
+      const averageTicket = ticketCount > 0 ? totalSales / ticketCount : 0;
+      
+      // Calculer les totaux de dépenses
+      const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+      
+      // Données à collecter en parallèle
+      const promises = [];
+      
+      // Ajouter la promesse pour l'inventaire si nécessaire
+      if (includeInventory) {
+        promises.push(this.getInventorySummary({ startDate, endDate }));
       } else {
-        processedData.variableCosts += expense.amount;
+        promises.push(Promise.resolve(null));
       }
       
-      // Ajouter la dépense traitée
-      processedData.expenses.push({
-        id: expense.id,
-        date: expense.date,
-        amount: expense.amount,
-        category,
-        vendor,
-        description: expense.description,
-        costType: expense.costType
-      });
-    });
-    
-    return processedData;
-  }
-  
-  /**
-   * Traite les données d'inventaire
-   * @param {Object} rawData - Données brutes
-   * @param {Object} options - Options de traitement
-   * @returns {Object} - Données traitées
-   * @private
-   */
-  _processInventoryData(rawData, options = {}) {
-    // Exemple de traitement des données d'inventaire
-    const processedData = {
-      totalValue: 0,
-      byCategory: {},
-      items: []
-    };
-    
-    if (!rawData || !rawData.inventory || !Array.isArray(rawData.inventory)) {
-      return processedData;
-    }
-    
-    // Traiter chaque élément d'inventaire
-    rawData.inventory.forEach(item => {
-      const itemValue = item.quantity * item.unitCost;
-      
-      // Ajouter à la valeur totale
-      processedData.totalValue += itemValue;
-      
-      // Ajouter à la catégorie
-      const category = item.category || 'unknown';
-      if (!processedData.byCategory[category]) {
-        processedData.byCategory[category] = { total: 0, count: 0 };
-      }
-      processedData.byCategory[category].total += itemValue;
-      processedData.byCategory[category].count++;
-      
-      // Ajouter l'élément traité
-      processedData.items.push({
-        id: item.id,
-        name: item.name,
-        quantity: item.quantity,
-        unitCost: item.unitCost,
-        totalValue: itemValue,
-        category,
-        expiryDate: item.expiryDate
-      });
-    });
-    
-    return processedData;
-  }
-  
-  /**
-   * Traite les données de personnel
-   * @param {Object} rawData - Données brutes
-   * @param {Object} options - Options de traitement
-   * @returns {Object} - Données traitées
-   * @private
-   */
-  _processStaffData(rawData, options = {}) {
-    // Exemple de traitement des données de personnel
-    const processedData = {
-      totalHours: 0,
-      totalCost: 0,
-      byDepartment: {},
-      byShift: {},
-      employees: []
-    };
-    
-    if (!rawData || !rawData.shifts || !Array.isArray(rawData.shifts)) {
-      return processedData;
-    }
-    
-    // Traiter chaque horaire
-    rawData.shifts.forEach(shift => {
-      const hours = shift.hours || 0;
-      const hourlyRate = shift.hourlyRate || 0;
-      const cost = hours * hourlyRate;
-      
-      // Ajouter au total
-      processedData.totalHours += hours;
-      processedData.totalCost += cost;
-      
-      // Ajouter au département
-      const department = shift.department || 'unknown';
-      if (!processedData.byDepartment[department]) {
-        processedData.byDepartment[department] = { hours: 0, cost: 0 };
-      }
-      processedData.byDepartment[department].hours += hours;
-      processedData.byDepartment[department].cost += cost;
-      
-      // Ajouter au service
-      const shiftType = shift.shiftType || 'unknown';
-      if (!processedData.byShift[shiftType]) {
-        processedData.byShift[shiftType] = { hours: 0, cost: 0 };
-      }
-      processedData.byShift[shiftType].hours += hours;
-      processedData.byShift[shiftType].cost += cost;
-      
-      // Ajouter l'employé traité
-      const employeeId = shift.employeeId;
-      const existingEmployee = processedData.employees.find(e => e.id === employeeId);
-      
-      if (existingEmployee) {
-        existingEmployee.hours += hours;
-        existingEmployee.cost += cost;
-        existingEmployee.shifts.push({
-          date: shift.date,
-          hours,
-          cost,
-          shiftType
-        });
+      // Ajouter la promesse pour les coûts de main d'œuvre si nécessaire
+      if (includeLaborCosts) {
+        promises.push(this.getLaborCosts({ startDate, endDate }));
       } else {
-        processedData.employees.push({
-          id: employeeId,
-          name: shift.employeeName,
-          department,
-          hours,
-          cost,
-          shifts: [{
-            date: shift.date,
-            hours,
-            cost,
-            shiftType
-          }]
-        });
+        promises.push(Promise.resolve(null));
       }
-    });
-    
-    return processedData;
+      
+      // Récupérer les données supplémentaires
+      const [inventorySummary, laborCosts] = await Promise.all(promises);
+      
+      // Calculer les indicateurs financiers
+      const costOfGoodsSold = inventorySummary ? inventorySummary.totalConsumption : 0;
+      const laborCost = laborCosts ? laborCosts.totalCost : 0;
+      
+      const grossProfit = totalSales - costOfGoodsSold;
+      const grossProfitMargin = totalSales > 0 ? (grossProfit / totalSales) * 100 : 0;
+      
+      const operatingProfit = grossProfit - laborCost - totalExpenses;
+      const operatingProfitMargin = totalSales > 0 ? (operatingProfit / totalSales) * 100 : 0;
+      
+      // Construire l'objet de résultat
+      return {
+        period: {
+          startDate: moment(startDate).format('YYYY-MM-DD'),
+          endDate: moment(endDate).format('YYYY-MM-DD')
+        },
+        summary: {
+          totalSales,
+          ticketCount,
+          averageTicket,
+          totalExpenses,
+          costOfGoodsSold,
+          laborCost,
+          grossProfit,
+          grossProfitMargin,
+          operatingProfit,
+          operatingProfitMargin
+        },
+        transactions,
+        expenses,
+        inventory: inventorySummary,
+        labor: laborCosts,
+        kpis: {
+          foodCostPercentage: totalSales > 0 ? (costOfGoodsSold / totalSales) * 100 : 0,
+          laborCostPercentage: totalSales > 0 ? (laborCost / totalSales) * 100 : 0,
+          expensePercentage: totalSales > 0 ? (totalExpenses / totalSales) * 100 : 0,
+          profitPercentage: totalSales > 0 ? (operatingProfit / totalSales) * 100 : 0
+        }
+      };
+    } catch (error) {
+      this.logger.error('Erreur lors de la récupération des données financières consolidées:', error);
+      throw error;
+    }
   }
   
   /**
-   * Traite les données de marketing
-   * @param {Object} rawData - Données brutes
-   * @param {Object} options - Options de traitement
-   * @returns {Object} - Données traitées
-   * @private
+   * Libère les ressources utilisées par le consolidateur
    */
-  _processMarketingData(rawData, options = {}) {
-    // Exemple de traitement des données de marketing
-    const processedData = {
-      totalExpenses: 0,
-      byChannel: {},
-      byCampaign: {},
-      campaigns: []
-    };
+  close() {
+    clearInterval(this.cacheCleaner);
+    this.cache.transactions.clear();
+    this.cache.expenses.clear();
+    this.cache.inventory.clear();
     
-    if (!rawData || !rawData.campaigns || !Array.isArray(rawData.campaigns)) {
-      return processedData;
-    }
-    
-    // Traiter chaque campagne
-    rawData.campaigns.forEach(campaign => {
-      const expense = campaign.expense || 0;
-      
-      // Ajouter au total
-      processedData.totalExpenses += expense;
-      
-      // Ajouter au canal
-      const channel = campaign.channel || 'unknown';
-      if (!processedData.byChannel[channel]) {
-        processedData.byChannel[channel] = { total: 0, count: 0 };
-      }
-      processedData.byChannel[channel].total += expense;
-      processedData.byChannel[channel].count++;
-      
-      // Ajouter à la campagne
-      const campaignType = campaign.type || 'unknown';
-      if (!processedData.byCampaign[campaignType]) {
-        processedData.byCampaign[campaignType] = { total: 0, count: 0 };
-      }
-      processedData.byCampaign[campaignType].total += expense;
-      processedData.byCampaign[campaignType].count++;
-      
-      // Ajouter la campagne traitée
-      processedData.campaigns.push({
-        id: campaign.id,
-        name: campaign.name,
-        startDate: campaign.startDate,
-        endDate: campaign.endDate,
-        expense,
-        channel,
-        type: campaignType,
-        metrics: campaign.metrics || {}
-      });
-    });
-    
-    return processedData;
-  }
-  
-  /**
-   * Génère un résumé des données consolidées
-   * @param {Object} consolidatedData - Données consolidées
-   * @returns {Object} - Résumé des données
-   * @private
-   */
-  _generateSummary(consolidatedData) {
-    const summary = {
-      financials: {
-        revenue: 0,
-        expenses: 0,
-        profit: 0,
-        profitMargin: 0
-      },
-      kpis: {
-        averageTicket: 0,
-        laborCostPercentage: 0,
-        foodCostPercentage: 0,
-        inventoryTurnover: 0
-      },
-      trends: {
-        salesGrowth: null,
-        expenseGrowth: null,
-        profitGrowth: null
-      }
-    };
-    
-    // Calculer les financials
-    if (consolidatedData.sources.sales) {
-      summary.financials.revenue = consolidatedData.sources.sales.totalSales;
-    }
-    
-    if (consolidatedData.sources.expenses) {
-      summary.financials.expenses = consolidatedData.sources.expenses.totalExpenses;
-    }
-    
-    summary.financials.profit = summary.financials.revenue - summary.financials.expenses;
-    summary.financials.profitMargin = summary.financials.revenue > 0 ? 
-      (summary.financials.profit / summary.financials.revenue) * 100 : 0;
-    
-    // Calculer les KPIs
-    if (consolidatedData.sources.sales) {
-      summary.kpis.averageTicket = consolidatedData.sources.sales.averageTicket;
-    }
-    
-    if (consolidatedData.sources.staff && summary.financials.revenue > 0) {
-      summary.kpis.laborCostPercentage = 
-        (consolidatedData.sources.staff.totalCost / summary.financials.revenue) * 100;
-    }
-    
-    if (consolidatedData.sources.inventory && summary.financials.revenue > 0) {
-      // Calculer le food cost à partir des données d'inventaire et de ventes
-      // Exemple simplifié: supposons que 40% des dépenses d'inventaire sont liées à la nourriture
-      const foodCost = consolidatedData.sources.inventory.totalValue * 0.4;
-      summary.kpis.foodCostPercentage = (foodCost / summary.financials.revenue) * 100;
-      
-      // Calculer la rotation des stocks
-      // Formule: Coût des marchandises vendues / Valeur moyenne des stocks
-      const averageInventoryValue = consolidatedData.sources.inventory.totalValue;
-      const costOfGoodsSold = summary.financials.expenses * 0.6; // Exemple simplifié: 60% des dépenses sont CoGS
-      
-      summary.kpis.inventoryTurnover = averageInventoryValue > 0 ? 
-        costOfGoodsSold / averageInventoryValue : 0;
-    }
-    
-    // Définir d'autres calculs complexes selon les besoins
-    // ...
-    
-    return summary;
-  }
-  
-  /**
-   * Évalue la qualité des données consolidées
-   * @param {Object} consolidatedData - Données consolidées
-   * @private
-   */
-  _evaluateDataQuality(consolidatedData) {
-    let completenessScore = 100;
-    let consistencyScore = 100;
-    
-    // Vérifier la complétude des données
-    const requiredSources = ['sales', 'expenses', 'inventory', 'staff'];
-    
-    for (const source of requiredSources) {
-      if (!consolidatedData.sources[source]) {
-        completenessScore -= 25; // Réduire de 25% par source manquante
-        
-        consolidatedData.metadata.dataQuality.warnings.push({
-          type: 'missing_source',
-          source,
-          impact: 'high'
-        });
-      }
-    }
-    
-    // Vérifier la cohérence des données
-    // Exemple: Les ventes doivent être supérieures aux dépenses pour un restaurant rentable
-    if (consolidatedData.sources.sales && consolidatedData.sources.expenses) {
-      if (consolidatedData.sources.sales.totalSales < consolidatedData.sources.expenses.totalExpenses) {
-        consistencyScore -= 30;
-        
-        consolidatedData.metadata.dataQuality.warnings.push({
-          type: 'business_anomaly',
-          description: 'Les dépenses sont supérieures aux ventes pour cette période',
-          impact: 'high'
-        });
-      }
-    }
-    
-    // Exemple: Le ticket moyen doit être dans des limites raisonnables
-    if (consolidatedData.sources.sales && consolidatedData.sources.sales.averageTicket) {
-      const averageTicket = consolidatedData.sources.sales.averageTicket;
-      
-      if (averageTicket < 5 || averageTicket > 500) {
-        consistencyScore -= 20;
-        
-        consolidatedData.metadata.dataQuality.warnings.push({
-          type: 'data_anomaly',
-          description: `Ticket moyen anormal: ${averageTicket.toFixed(2)}€`,
-          impact: 'medium'
-        });
-      }
-    }
-    
-    // Mettre à jour les scores de qualité
-    consolidatedData.metadata.dataQuality.completeness = Math.max(0, completenessScore);
-    consolidatedData.metadata.dataQuality.consistency = Math.max(0, consistencyScore);
-  }
-  
-  /**
-   * Récupère les KPIs financiers actuels
-   * @returns {Promise<Object>} - KPIs financiers
-   */
-  async getCurrentFinancialKPIs() {
-    // Récupérer les données pour la journée en cours
-    const today = moment().format('YYYY-MM-DD');
-    
-    const consolidatedData = await this.consolidateFinancialData({
-      startDate: today,
-      endDate: today
-    });
-    
-    return {
-      daily: consolidatedData.summary,
-      mtd: await this._calculateMTDKPIs(),
-      ytd: await this._calculateYTDKPIs()
-    };
-  }
-  
-  /**
-   * Calcule les KPIs du mois en cours
-   * @returns {Promise<Object>} - KPIs du mois
-   * @private
-   */
-  async _calculateMTDKPIs() {
-    const startOfMonth = moment().startOf('month').format('YYYY-MM-DD');
-    const today = moment().format('YYYY-MM-DD');
-    
-    const consolidatedData = await this.consolidateFinancialData({
-      startDate: startOfMonth,
-      endDate: today
-    });
-    
-    // Ajouter des projections pour la fin du mois
-    const daysInMonth = moment().daysInMonth();
-    const daysPassed = moment().date();
-    const remainingDays = daysInMonth - daysPassed;
-    
-    const projectionMultiplier = daysInMonth / daysPassed;
-    
-    const mtdSummary = {
-      ...consolidatedData.summary,
-      projections: {
-        revenue: consolidatedData.summary.financials.revenue * projectionMultiplier,
-        expenses: consolidatedData.summary.financials.expenses * projectionMultiplier,
-        profit: consolidatedData.summary.financials.profit * projectionMultiplier
-      }
-    };
-    
-    return mtdSummary;
-  }
-  
-  /**
-   * Calcule les KPIs de l'année en cours
-   * @returns {Promise<Object>} - KPIs de l'année
-   * @private
-   */
-  async _calculateYTDKPIs() {
-    const startOfYear = moment().startOf('year').format('YYYY-MM-DD');
-    const today = moment().format('YYYY-MM-DD');
-    
-    const consolidatedData = await this.consolidateFinancialData({
-      startDate: startOfYear,
-      endDate: today
-    });
-    
-    // Ajouter des projections pour la fin de l'année
-    const daysInYear = moment().isLeapYear() ? 366 : 365;
-    const dayOfYear = moment().dayOfYear();
-    const remainingDays = daysInYear - dayOfYear;
-    
-    const projectionMultiplier = daysInYear / dayOfYear;
-    
-    const ytdSummary = {
-      ...consolidatedData.summary,
-      projections: {
-        revenue: consolidatedData.summary.financials.revenue * projectionMultiplier,
-        expenses: consolidatedData.summary.financials.expenses * projectionMultiplier,
-        profit: consolidatedData.summary.financials.profit * projectionMultiplier
-      }
-    };
-    
-    return ytdSummary;
+    this.logger.info('DataConsolidator fermé');
   }
 }
 
