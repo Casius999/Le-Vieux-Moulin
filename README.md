@@ -16,7 +16,7 @@ Ce dépôt contient l'intégralité du système de gestion intelligente dévelop
 - **Fiche Google** : [Le Vieux Moulin](https://g.co/kgs/ua1rt2j)
 - **Capacité** : 60 couverts le midi, 80 le soir
 - **Spécialités** : Pizzas, salades, frites, magret, et autres spécialités locales
-- **Démonstration** : file:///C:/Users/julie/Desktop/vitrine-vieux-moulin.html
+- **Démonstration** : [Demo](file:///C:/Users/julie/Desktop/vitrine-vieux-moulin.html)
 
 ## Fonctionnalités Principales
 
