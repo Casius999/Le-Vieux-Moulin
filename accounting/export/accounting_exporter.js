@@ -1,8 +1,7 @@
 /**
- * Module d'exportation comptable
- * 
- * Ce module permet d'exporter les données financières dans différents formats
- * compatibles avec les logiciels de comptabilité standards.
+ * Module d'exportation des données comptables
+ * Génère des exports de données comptables dans différents formats
+ * compatibles avec les logiciels de comptabilité
  */
 
 'use strict';
@@ -10,796 +9,315 @@
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
-const XLSX = require('xlsx');
-const { EventEmitter } = require('events');
+const ExcelJS = require('exceljs');
+const csv = require('fast-csv');
+const PDFDocument = require('pdfkit');
 
 /**
- * Classe principale d'exportation comptable
+ * Classe responsable de l'exportation des données comptables
  */
-class AccountingExporter extends EventEmitter {
+class AccountingExporter {
   /**
-   * Crée une nouvelle instance de l'exportateur comptable
+   * Crée une nouvelle instance de l'exportateur
    * @param {Object} options - Options de configuration
-   * @param {Object} options.dataConsolidator - Consolidateur de données
-   * @param {Object} options.configManager - Gestionnaire de configuration
-   * @param {Object} options.alertService - Service d'alertes
-   * @param {string} options.outputDir - Répertoire de sortie des exports
+   * @param {Object} options.configManager - Instance du gestionnaire de configuration
+   * @param {Object} options.logger - Instance du logger
+   * @param {Object} options.dataConsolidator - Instance du consolidateur de données
    */
   constructor(options = {}) {
-    super();
-    
-    this.dataConsolidator = options.dataConsolidator;
     this.configManager = options.configManager;
-    this.alertService = options.alertService;
-    this.outputDir = options.outputDir || './exports';
+    this.logger = options.logger || console;
+    this.dataConsolidator = options.dataConsolidator;
     
-    // Charger la configuration des exports
-    this.exportConfig = this._loadExportConfig();
+    // Récupérer la configuration d'export
+    this.exportConfig = this.configManager?.getConfig('export') || {};
     
-    // Créer le répertoire de sortie s'il n'existe pas
+    // Répertoire pour enregistrer les exports
+    this.outputDir = options.outputDir || path.join(process.cwd(), 'exports');
+    
+    // S'assurer que le répertoire existe
     if (!fs.existsSync(this.outputDir)) {
       fs.mkdirSync(this.outputDir, { recursive: true });
     }
     
-    // Historique des exports
-    this.exportHistory = [];
-  }
-  
-  /**
-   * Charge la configuration des exports
-   * @returns {Object} - Configuration des exports
-   * @private
-   */
-  _loadExportConfig() {
-    const defaultConfig = {
-      formats: {
-        sage: {
-          enabled: true,
-          description: "Format Sage Compta",
-          extension: ".csv",
-          delimiter: ";",
-          dateFormat: "DD/MM/YYYY",
-          encoding: "utf8"
-        },
-        ebp: {
-          enabled: true,
-          description: "Format EBP",
-          extension: ".csv",
-          delimiter: ";",
-          dateFormat: "DD/MM/YYYY",
-          encoding: "utf8"
-        },
-        quickbooks: {
-          enabled: true,
-          description: "Format QuickBooks",
-          extension: ".iif",
-          delimiter: "\t",
-          dateFormat: "MM/DD/YYYY",
-          encoding: "utf8"
-        },
-        excel: {
-          enabled: true,
-          description: "Format Excel",
-          extension: ".xlsx",
-          dateFormat: "YYYY-MM-DD",
-          encoding: "utf8"
-        },
-        fec: {
-          enabled: true,
-          description: "Format FEC (Fichier des Écritures Comptables)",
-          extension: ".txt",
-          delimiter: "\t",
-          dateFormat: "YYYYMMDD",
-          encoding: "utf8"
-        }
-      },
-      accountMapping: {
-        sales: {
-          food: "707100",
-          beverages: "707200",
-          alcohol: "707300",
-          takeaway: "707400",
-          other: "708000"
-        },
-        expenses: {
-          food: "607100",
-          beverages: "607200",
-          rent: "613000",
-          utilities: "606000",
-          salaries: "641000",
-          socialCharges: "645000",
-          maintenance: "615000",
-          advertising: "623000",
-          insurance: "616000",
-          bankFees: "627000",
-          other: "628000"
-        },
-        taxes: {
-          vatCollected: "445710",
-          vatDeductible: "445660",
-          vatToPay: "445510"
-        },
-        bank: {
-          bankAccount: "512000",
-          cashAccount: "531000"
-        }
-      },
-      companyInfo: {
-        name: "SARL Le Vieux Moulin",
-        address: "Camping 3 étoiles, Vensac, Gironde",
-        phone: "+33 7 79 43 17 29",
-        siret: "00000000000000", // À remplacer par le vrai SIRET
-        vatNumber: "FR00000000000", // À remplacer par le vrai numéro de TVA
-        fiscalYear: {
-          start: "01-01",
-          end: "12-31"
-        }
-      }
+    // Chemins spécifiques pour chaque type d'export
+    this.exportPaths = {
+      pdf: path.join(this.outputDir, 'pdf'),
+      excel: path.join(this.outputDir, 'excel'),
+      csv: path.join(this.outputDir, 'csv'),
+      sage: path.join(this.outputDir, 'sage'),
+      fec: path.join(this.outputDir, 'fec')
     };
     
-    // Fusionner avec la configuration personnalisée si disponible
-    if (this.configManager) {
-      const customConfig = this.configManager.getConfig('accounting.export', {});
-      return {
-        formats: { ...defaultConfig.formats, ...customConfig.formats },
-        accountMapping: { ...defaultConfig.accountMapping, ...customConfig.accountMapping },
-        companyInfo: { ...defaultConfig.companyInfo, ...customConfig.companyInfo }
-      };
+    // Créer les sous-répertoires
+    for (const dir of Object.values(this.exportPaths)) {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
     }
     
-    return defaultConfig;
+    this.logger.info('AccountingExporter initialisé');
   }
   
   /**
-   * Exporte les données comptables pour une période donnée
-   * @param {Object} options - Options d'exportation
-   * @param {Date|string} options.startDate - Date de début de la période
-   * @param {Date|string} options.endDate - Date de fin de la période
-   * @param {string} options.format - Format d'export (sage, ebp, quickbooks, excel, fec)
-   * @param {boolean} options.includeDrafts - Inclure les écritures en brouillon
-   * @returns {Promise<Object>} - Informations sur l'export réalisé
+   * Génère un export comptable pour une période donnée
+   * @param {Object} params - Paramètres d'export
+   * @param {Date|string} params.startDate - Date de début
+   * @param {Date|string} params.endDate - Date de fin
+   * @param {string[]} params.formats - Formats à générer (pdf, excel, csv, sage, fec)
+   * @param {string} params.type - Type de rapport (daily, monthly, quarterly, annual)
+   * @param {Object} params.options - Options spécifiques au format
+   * @returns {Promise<Object>} - Les chemins des fichiers générés
    */
-  async exportAccountingData(options = {}) {
-    const startDate = options.startDate ? moment(options.startDate) : moment().startOf('month');
-    const endDate = options.endDate ? moment(options.endDate) : moment().endOf('month');
-    const format = options.format || 'sage';
-    const includeDrafts = options.includeDrafts !== undefined ? options.includeDrafts : false;
-    
+  async generateAccountingExport(params = {}) {
     try {
-      // Vérifier si le format est supporté
-      if (!this.exportConfig.formats[format] || !this.exportConfig.formats[format].enabled) {
-        throw new Error(`Format d'export non supporté: ${format}`);
-      }
-      
-      // Récupérer les données consolidées pour la période
-      const consolidatedData = await this.dataConsolidator.consolidateFinancialData({
-        startDate: startDate.format('YYYY-MM-DD'),
-        endDate: endDate.format('YYYY-MM-DD')
-      });
-      
-      // Préparer les données comptables (écritures, etc.)
-      const accountingData = this._prepareAccountingData(consolidatedData, { includeDrafts });
-      
-      // Exporter dans le format demandé
-      const exportResult = await this._exportToFormat(accountingData, format, {
+      const { 
         startDate,
-        endDate
-      });
+        endDate,
+        formats = ['excel', 'pdf'],
+        type = 'monthly',
+        options = {}
+      } = params;
       
-      // Enregistrer dans l'historique
-      this.exportHistory.push({
-        timestamp: new Date(),
-        period: {
-          start: startDate.format('YYYY-MM-DD'),
-          end: endDate.format('YYYY-MM-DD')
-        },
-        format,
-        filePath: exportResult.filePath,
-        fileSize: exportResult.fileSize,
-        entriesCount: accountingData.entries.length
-      });
+      // Normaliser les dates
+      const start = startDate instanceof Date ? startDate : new Date(startDate);
+      const end = endDate instanceof Date ? endDate : new Date(endDate);
       
-      // Limiter l'historique à 100 entrées
-      if (this.exportHistory.length > 100) {
-        this.exportHistory.shift();
+      // Vérifier la validité des dates
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        throw new Error('Dates invalides fournies pour l\'export comptable');
       }
       
-      // Émettre un événement d'export réussi
-      this.emit('export:complete', {
-        format,
-        period: {
-          start: startDate.format('YYYY-MM-DD'),
-          end: endDate.format('YYYY-MM-DD')
-        },
-        entriesCount: accountingData.entries.length,
-        filePath: exportResult.filePath
+      // Formater les dates pour les noms de fichiers
+      const formattedStartDate = moment(start).format('YYYY-MM-DD');
+      const formattedEndDate = moment(end).format('YYYY-MM-DD');
+      
+      // Récupérer les données comptables consolidées
+      const accountingData = await this.dataConsolidator.getConsolidatedFinancialData({
+        startDate: start,
+        endDate: end,
+        includeInventory: true,
+        includeLaborCosts: true
       });
       
-      return {
-        status: 'success',
-        format,
+      // Résultat des exports
+      const exportResults = {
         period: {
-          start: startDate.format('YYYY-MM-DD'),
-          end: endDate.format('YYYY-MM-DD')
+          startDate: formattedStartDate,
+          endDate: formattedEndDate,
+          type
         },
-        filePath: exportResult.filePath,
-        fileSize: exportResult.fileSize,
-        entriesCount: accountingData.entries.length
+        files: {}
       };
-    } catch (error) {
-      console.error(`Erreur lors de l'export comptable au format ${format}:`, error);
       
-      // Émettre un événement d'erreur
-      this.emit('export:error', {
-        format,
-        period: {
-          start: startDate.format('YYYY-MM-DD'),
-          end: endDate.format('YYYY-MM-DD')
-        },
-        error: error.message
-      });
-      
-      // Créer une alerte
-      if (this.alertService) {
-        this.alertService.danger('accounting_export_error',
-          `Erreur lors de l'export comptable au format ${format}: ${error.message}`,
-          {
-            period: {
-              start: startDate.format('YYYY-MM-DD'),
-              end: endDate.format('YYYY-MM-DD')
-            },
-            format,
-            error: error.message
-          }
-        );
+      // Générer les exports dans chaque format demandé
+      for (const format of formats) {
+        let filePath;
+        
+        switch (format.toLowerCase()) {
+          case 'pdf':
+            filePath = await this._generatePdfExport(accountingData, type, options);
+            exportResults.files.pdf = filePath;
+            break;
+            
+          case 'excel':
+            filePath = await this._generateExcelExport(accountingData, type, options);
+            exportResults.files.excel = filePath;
+            break;
+            
+          case 'csv':
+            filePath = await this._generateCsvExport(accountingData, type, options);
+            exportResults.files.csv = filePath;
+            break;
+            
+          case 'sage':
+            filePath = await this._generateSageExport(accountingData, type, options);
+            exportResults.files.sage = filePath;
+            break;
+            
+          case 'fec':
+            filePath = await this._generateFecExport(accountingData, type, options);
+            exportResults.files.fec = filePath;
+            break;
+            
+          default:
+            this.logger.warn(`Format d'export non pris en charge: ${format}`);
+        }
       }
       
+      this.logger.info(`Export comptable généré pour la période du ${formattedStartDate} au ${formattedEndDate}`);
+      
+      return exportResults;
+    } catch (error) {
+      this.logger.error('Erreur lors de la génération de l\'export comptable:', error);
       throw error;
     }
   }
   
   /**
-   * Prépare les données comptables à partir des données consolidées
-   * @param {Object} consolidatedData - Données consolidées
-   * @param {Object} options - Options de préparation
-   * @returns {Object} - Données comptables formatées
+   * Génère un export au format PDF
+   * @param {Object} data - Données comptables
+   * @param {string} type - Type de rapport
+   * @param {Object} options - Options spécifiques
+   * @returns {Promise<string>} - Chemin du fichier généré
    * @private
    */
-  _prepareAccountingData(consolidatedData, options = {}) {
-    const { includeDrafts } = options;
-    
-    // Structure pour les données comptables
-    const accountingData = {
-      period: consolidatedData.period,
-      journal: "VTE", // Journal des ventes par défaut
-      entries: [],
-      summary: {
-        debit: 0,
-        credit: 0,
-        balance: 0
-      }
-    };
-    
-    // 1. Traiter les ventes
-    if (consolidatedData.sources.sales) {
-      this._processSalesData(consolidatedData.sources.sales, accountingData);
-    }
-    
-    // 2. Traiter les dépenses
-    if (consolidatedData.sources.expenses) {
-      this._processExpensesData(consolidatedData.sources.expenses, accountingData);
-    }
-    
-    // 3. Traiter les données de personnel
-    if (consolidatedData.sources.staff) {
-      this._processStaffData(consolidatedData.sources.staff, accountingData);
-    }
-    
-    // 4. Traiter la TVA
-    this._processVatData(consolidatedData, accountingData);
-    
-    // Calculer les totaux
-    let totalDebit = 0;
-    let totalCredit = 0;
-    
-    for (const entry of accountingData.entries) {
-      totalDebit += entry.debit || 0;
-      totalCredit += entry.credit || 0;
-    }
-    
-    accountingData.summary.debit = totalDebit;
-    accountingData.summary.credit = totalCredit;
-    accountingData.summary.balance = totalCredit - totalDebit;
-    
-    return accountingData;
-  }
-  
-  /**
-   * Traite les données de ventes pour les transformer en écritures comptables
-   * @param {Object} salesData - Données de ventes
-   * @param {Object} accountingData - Données comptables à mettre à jour
-   * @private
-   */
-  _processSalesData(salesData, accountingData) {
-    // Traiter les ventes par catégorie
-    for (const [category, data] of Object.entries(salesData.byCategory)) {
-      // Déterminer le compte comptable
-      let accountNumber;
-      
-      if (category === 'alcohol' && this.exportConfig.accountMapping.sales.alcohol) {
-        accountNumber = this.exportConfig.accountMapping.sales.alcohol;
-      } else if (category === 'takeaway' && this.exportConfig.accountMapping.sales.takeaway) {
-        accountNumber = this.exportConfig.accountMapping.sales.takeaway;
-      } else if (['food', 'desserts', 'starters', 'mains'].includes(category) && this.exportConfig.accountMapping.sales.food) {
-        accountNumber = this.exportConfig.accountMapping.sales.food;
-      } else if (['drinks', 'non_alcoholic', 'beverages'].includes(category) && this.exportConfig.accountMapping.sales.beverages) {
-        accountNumber = this.exportConfig.accountMapping.sales.beverages;
-      } else {
-        accountNumber = this.exportConfig.accountMapping.sales.other;
-      }
-      
-      // Créer l'écriture
-      const entry = {
-        date: moment(accountingData.period.end).format('YYYY-MM-DD'),
-        journal: "VTE",
-        accountNumber,
-        label: `Ventes ${category} du ${moment(accountingData.period.start).format('DD/MM/YYYY')} au ${moment(accountingData.period.end).format('DD/MM/YYYY')}`,
-        debit: 0,
-        credit: data.total,
-        reference: `V${moment(accountingData.period.end).format('YYYYMMDD')}`,
-        category
-      };
-      
-      accountingData.entries.push(entry);
-    }
-    
-    // Créer l'écriture de contrepartie (encaissement)
-    // Nous supposons que les ventes sont réparties entre espèces et cartes bancaires
-    
-    const cashRatio = 0.2; // 20% des ventes en espèces (exemple)
-    const cardRatio = 0.8; // 80% des ventes en cartes bancaires (exemple)
-    
-    // Encaissement en espèces
-    if (salesData.totalSales * cashRatio > 0) {
-      const cashEntry = {
-        date: moment(accountingData.period.end).format('YYYY-MM-DD'),
-        journal: "VTE",
-        accountNumber: this.exportConfig.accountMapping.bank.cashAccount,
-        label: `Encaissement espèces du ${moment(accountingData.period.start).format('DD/MM/YYYY')} au ${moment(accountingData.period.end).format('DD/MM/YYYY')}`,
-        debit: salesData.totalSales * cashRatio,
-        credit: 0,
-        reference: `V${moment(accountingData.period.end).format('YYYYMMDD')}`,
-        category: 'encaissement'
-      };
-      
-      accountingData.entries.push(cashEntry);
-    }
-    
-    // Encaissement par carte bancaire
-    if (salesData.totalSales * cardRatio > 0) {
-      const cardEntry = {
-        date: moment(accountingData.period.end).format('YYYY-MM-DD'),
-        journal: "VTE",
-        accountNumber: this.exportConfig.accountMapping.bank.bankAccount,
-        label: `Encaissement CB du ${moment(accountingData.period.start).format('DD/MM/YYYY')} au ${moment(accountingData.period.end).format('DD/MM/YYYY')}`,
-        debit: salesData.totalSales * cardRatio,
-        credit: 0,
-        reference: `V${moment(accountingData.period.end).format('YYYYMMDD')}`,
-        category: 'encaissement'
-      };
-      
-      accountingData.entries.push(cardEntry);
-    }
-  }
-  
-  /**
-   * Traite les données de dépenses pour les transformer en écritures comptables
-   * @param {Object} expensesData - Données de dépenses
-   * @param {Object} accountingData - Données comptables à mettre à jour
-   * @private
-   */
-  _processExpensesData(expensesData, accountingData) {
-    // Traiter les dépenses par catégorie
-    for (const [category, data] of Object.entries(expensesData.byCategory)) {
-      // Déterminer le compte comptable
-      let accountNumber;
-      
-      if (category === 'food' && this.exportConfig.accountMapping.expenses.food) {
-        accountNumber = this.exportConfig.accountMapping.expenses.food;
-      } else if (category === 'beverages' && this.exportConfig.accountMapping.expenses.beverages) {
-        accountNumber = this.exportConfig.accountMapping.expenses.beverages;
-      } else if (category === 'rent' && this.exportConfig.accountMapping.expenses.rent) {
-        accountNumber = this.exportConfig.accountMapping.expenses.rent;
-      } else if (category === 'utilities' && this.exportConfig.accountMapping.expenses.utilities) {
-        accountNumber = this.exportConfig.accountMapping.expenses.utilities;
-      } else if (category === 'maintenance' && this.exportConfig.accountMapping.expenses.maintenance) {
-        accountNumber = this.exportConfig.accountMapping.expenses.maintenance;
-      } else if (category === 'advertising' && this.exportConfig.accountMapping.expenses.advertising) {
-        accountNumber = this.exportConfig.accountMapping.expenses.advertising;
-      } else if (category === 'insurance' && this.exportConfig.accountMapping.expenses.insurance) {
-        accountNumber = this.exportConfig.accountMapping.expenses.insurance;
-      } else if (category === 'bankFees' && this.exportConfig.accountMapping.expenses.bankFees) {
-        accountNumber = this.exportConfig.accountMapping.expenses.bankFees;
-      } else {
-        accountNumber = this.exportConfig.accountMapping.expenses.other;
-      }
-      
-      // Créer l'écriture
-      const entry = {
-        date: moment(accountingData.period.end).format('YYYY-MM-DD'),
-        journal: "ACH", // Journal des achats
-        accountNumber,
-        label: `Dépenses ${category} du ${moment(accountingData.period.start).format('DD/MM/YYYY')} au ${moment(accountingData.period.end).format('DD/MM/YYYY')}`,
-        debit: data.total,
-        credit: 0,
-        reference: `A${moment(accountingData.period.end).format('YYYYMMDD')}`,
-        category
-      };
-      
-      accountingData.entries.push(entry);
-    }
-    
-    // Créer l'écriture de contrepartie (paiement)
-    const paymentEntry = {
-      date: moment(accountingData.period.end).format('YYYY-MM-DD'),
-      journal: "ACH",
-      accountNumber: this.exportConfig.accountMapping.bank.bankAccount,
-      label: `Paiement fournisseurs du ${moment(accountingData.period.start).format('DD/MM/YYYY')} au ${moment(accountingData.period.end).format('DD/MM/YYYY')}`,
-      debit: 0,
-      credit: expensesData.totalExpenses,
-      reference: `A${moment(accountingData.period.end).format('YYYYMMDD')}`,
-      category: 'paiement'
-    };
-    
-    accountingData.entries.push(paymentEntry);
-  }
-  
-  /**
-   * Traite les données de personnel pour les transformer en écritures comptables
-   * @param {Object} staffData - Données de personnel
-   * @param {Object} accountingData - Données comptables à mettre à jour
-   * @private
-   */
-  _processStaffData(staffData, accountingData) {
-    // Créer l'écriture pour les salaires
-    const salaryEntry = {
-      date: moment(accountingData.period.end).format('YYYY-MM-DD'),
-      journal: "OD", // Journal des opérations diverses
-      accountNumber: this.exportConfig.accountMapping.expenses.salaries,
-      label: `Salaires du ${moment(accountingData.period.start).format('DD/MM/YYYY')} au ${moment(accountingData.period.end).format('DD/MM/YYYY')}`,
-      debit: staffData.totalCost * 0.7, // Approximation: 70% du coût total sont des salaires bruts
-      credit: 0,
-      reference: `S${moment(accountingData.period.end).format('YYYYMMDD')}`,
-      category: 'salaries'
-    };
-    
-    accountingData.entries.push(salaryEntry);
-    
-    // Créer l'écriture pour les charges sociales
-    const socialChargesEntry = {
-      date: moment(accountingData.period.end).format('YYYY-MM-DD'),
-      journal: "OD",
-      accountNumber: this.exportConfig.accountMapping.expenses.socialCharges,
-      label: `Charges sociales du ${moment(accountingData.period.start).format('DD/MM/YYYY')} au ${moment(accountingData.period.end).format('DD/MM/YYYY')}`,
-      debit: staffData.totalCost * 0.3, // Approximation: 30% du coût total sont des charges sociales
-      credit: 0,
-      reference: `S${moment(accountingData.period.end).format('YYYYMMDD')}`,
-      category: 'social_charges'
-    };
-    
-    accountingData.entries.push(socialChargesEntry);
-    
-    // Créer l'écriture de contrepartie (paiement)
-    const paymentEntry = {
-      date: moment(accountingData.period.end).format('YYYY-MM-DD'),
-      journal: "OD",
-      accountNumber: this.exportConfig.accountMapping.bank.bankAccount,
-      label: `Paiement salaires et charges du ${moment(accountingData.period.start).format('DD/MM/YYYY')} au ${moment(accountingData.period.end).format('DD/MM/YYYY')}`,
-      debit: 0,
-      credit: staffData.totalCost,
-      reference: `S${moment(accountingData.period.end).format('YYYYMMDD')}`,
-      category: 'payment'
-    };
-    
-    accountingData.entries.push(paymentEntry);
-  }
-  
-  /**
-   * Traite les données de TVA pour les transformer en écritures comptables
-   * @param {Object} consolidatedData - Données consolidées
-   * @param {Object} accountingData - Données comptables à mettre à jour
-   * @private
-   */
-  _processVatData(consolidatedData, accountingData) {
-    // Calculer la TVA collectée
-    let vatCollected = 0;
-    let vatDeductible = 0;
-    
-    // TVA collectée sur les ventes
-    if (consolidatedData.sources.sales) {
-      const sales = consolidatedData.sources.sales;
-      
-      // TVA à 20% (standard)
-      if (sales.byCategory.alcohol) {
-        const taxableAmount = sales.byCategory.alcohol.total / 1.20;
-        const vat = sales.byCategory.alcohol.total - taxableAmount;
-        vatCollected += vat;
-      }
-      
-      // TVA à 10% (service sur place)
-      const onPremiseCategories = ['food', 'desserts', 'starters', 'mains', 'non_alcoholic'];
-      for (const category of onPremiseCategories) {
-        if (sales.byCategory[category]) {
-          const taxableAmount = sales.byCategory[category].total / 1.10;
-          const vat = sales.byCategory[category].total - taxableAmount;
-          vatCollected += vat;
-        }
-      }
-      
-      // TVA à 5.5% (vente à emporter)
-      if (sales.byCategory.takeaway) {
-        const taxableAmount = sales.byCategory.takeaway.total / 1.055;
-        const vat = sales.byCategory.takeaway.total - taxableAmount;
-        vatCollected += vat;
-      }
-    }
-    
-    // TVA déductible sur les achats
-    if (consolidatedData.sources.expenses) {
-      // Approximation: 80% des dépenses sont éligibles à la déduction de TVA à 20%
-      const eligibleExpenses = consolidatedData.sources.expenses.totalExpenses * 0.80;
-      vatDeductible = eligibleExpenses * 0.20 / 1.20;
-    }
-    
-    // Créer l'écriture pour la TVA collectée
-    if (vatCollected > 0) {
-      const vatCollectedEntry = {
-        date: moment(accountingData.period.end).format('YYYY-MM-DD'),
-        journal: "OD", // Journal des opérations diverses
-        accountNumber: this.exportConfig.accountMapping.taxes.vatCollected,
-        label: `TVA collectée du ${moment(accountingData.period.start).format('DD/MM/YYYY')} au ${moment(accountingData.period.end).format('DD/MM/YYYY')}`,
-        debit: 0,
-        credit: vatCollected,
-        reference: `T${moment(accountingData.period.end).format('YYYYMMDD')}`,
-        category: 'vat_collected'
-      };
-      
-      accountingData.entries.push(vatCollectedEntry);
-    }
-    
-    // Créer l'écriture pour la TVA déductible
-    if (vatDeductible > 0) {
-      const vatDeductibleEntry = {
-        date: moment(accountingData.period.end).format('YYYY-MM-DD'),
-        journal: "OD",
-        accountNumber: this.exportConfig.accountMapping.taxes.vatDeductible,
-        label: `TVA déductible du ${moment(accountingData.period.start).format('DD/MM/YYYY')} au ${moment(accountingData.period.end).format('DD/MM/YYYY')}`,
-        debit: vatDeductible,
-        credit: 0,
-        reference: `T${moment(accountingData.period.end).format('YYYYMMDD')}`,
-        category: 'vat_deductible'
-      };
-      
-      accountingData.entries.push(vatDeductibleEntry);
-    }
-    
-    // Créer l'écriture pour la TVA à payer si c'est la fin du mois
-    const isEndOfMonth = moment(accountingData.period.end).isSame(moment(accountingData.period.end).endOf('month'), 'day');
-    
-    if (isEndOfMonth && vatCollected > vatDeductible) {
-      const vatToPayEntry = {
-        date: moment(accountingData.period.end).format('YYYY-MM-DD'),
-        journal: "OD",
-        accountNumber: this.exportConfig.accountMapping.taxes.vatToPay,
-        label: `TVA à payer pour ${moment(accountingData.period.end).format('MMMM YYYY')}`,
-        debit: vatCollected - vatDeductible,
-        credit: 0,
-        reference: `T${moment(accountingData.period.end).format('YYYYMMDD')}`,
-        category: 'vat_to_pay'
-      };
-      
-      accountingData.entries.push(vatToPayEntry);
-      
-      // Contrepartie sur le compte bancaire
-      const vatPaymentEntry = {
-        date: moment(accountingData.period.end).add(15, 'days').format('YYYY-MM-DD'), // Paiement 15 jours après la fin du mois
-        journal: "OD",
-        accountNumber: this.exportConfig.accountMapping.bank.bankAccount,
-        label: `Paiement TVA pour ${moment(accountingData.period.end).format('MMMM YYYY')}`,
-        debit: 0,
-        credit: vatCollected - vatDeductible,
-        reference: `T${moment(accountingData.period.end).format('YYYYMMDD')}`,
-        category: 'vat_payment'
-      };
-      
-      accountingData.entries.push(vatPaymentEntry);
-    }
-  }
-  
-  /**
-   * Exporte les données comptables dans le format spécifié
-   * @param {Object} accountingData - Données comptables
-   * @param {string} format - Format d'export
-   * @param {Object} options - Options d'export
-   * @returns {Promise<Object>} - Informations sur l'export réalisé
-   * @private
-   */
-  async _exportToFormat(accountingData, format, options = {}) {
-    const { startDate, endDate } = options;
-    const formatConfig = this.exportConfig.formats[format];
-    
-    // Créer le sous-répertoire pour ce format si nécessaire
-    const formatDir = path.join(this.outputDir, format);
-    if (!fs.existsSync(formatDir)) {
-      fs.mkdirSync(formatDir, { recursive: true });
-    }
-    
-    // Définir le chemin du fichier de sortie
-    const fileName = `export_${format}_${startDate.format('YYYYMMDD')}_${endDate.format('YYYYMMDD')}${formatConfig.extension}`;
-    const filePath = path.join(formatDir, fileName);
-    
-    let result;
-    
-    switch (format) {
-      case 'sage':
-        result = await this._exportToSage(accountingData, filePath, formatConfig);
-        break;
-      
-      case 'ebp':
-        result = await this._exportToEBP(accountingData, filePath, formatConfig);
-        break;
-      
-      case 'quickbooks':
-        result = await this._exportToQuickBooks(accountingData, filePath, formatConfig);
-        break;
-      
-      case 'excel':
-        result = await this._exportToExcel(accountingData, filePath, formatConfig);
-        break;
-      
-      case 'fec':
-        result = await this._exportToFEC(accountingData, filePath, formatConfig);
-        break;
-      
-      default:
-        throw new Error(`Format d'export non supporté: ${format}`);
-    }
-    
-    console.log(`Export comptable au format ${format} généré: ${filePath}`);
-    
-    return {
-      filePath,
-      fileSize: fs.statSync(filePath).size,
-      format
-    };
-  }
-  
-  /**
-   * Exporte les données comptables au format Sage
-   * @param {Object} accountingData - Données comptables
-   * @param {string} filePath - Chemin du fichier de sortie
-   * @param {Object} formatConfig - Configuration du format
-   * @returns {Promise<Object>} - Informations sur l'export réalisé
-   * @private
-   */
-  async _exportToSage(accountingData, filePath, formatConfig) {
+  async _generatePdfExport(data, type, options = {}) {
     return new Promise((resolve, reject) => {
       try {
-        // Créer l'en-tête du fichier
-        let content = `JournalCode;EcritureNum;EcritureDate;CompteNum;CompteLib;CompAuxNum;CompAuxLib;PieceRef;PieceDate;EcritureLib;Debit;Credit;EcritureLet;DateLet;ValidDate;Montantdevise;Idevise\n`;
+        // Déterminer le nom du fichier
+        const fileName = `comptabilite_${type}_${data.period.startDate}_${data.period.endDate}.pdf`;
+        const filePath = path.join(this.exportPaths.pdf, fileName);
         
-        // Ajouter chaque écriture
-        accountingData.entries.forEach((entry, index) => {
-          const entryNum = `E${String(index + 1).padStart(5, '0')}`;
-          const debit = entry.debit.toFixed(2).replace('.', ',');
-          const credit = entry.credit.toFixed(2).replace('.', ',');
-          
-          content += `${entry.journal};${entryNum};${moment(entry.date).format(formatConfig.dateFormat)};${entry.accountNumber};;;;;;${entry.label};${debit};${credit};;;;\n`;
+        // Créer le document PDF
+        const doc = new PDFDocument({
+          size: 'A4',
+          margins: { top: 50, bottom: 50, left: 40, right: 40 },
+          info: {
+            Title: `Rapport Comptable - ${type}`,
+            Author: 'Le Vieux Moulin - Module Comptabilité',
+            Subject: 'Données comptables',
+            Keywords: 'comptabilité, finance, restaurant',
+            CreationDate: new Date()
+          }
         });
         
-        // Écrire le fichier
-        fs.writeFileSync(filePath, content, { encoding: formatConfig.encoding });
+        // Flux d'écriture
+        const stream = fs.createWriteStream(filePath);
+        doc.pipe(stream);
         
-        resolve({ filePath });
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-  
-  /**
-   * Exporte les données comptables au format EBP
-   * @param {Object} accountingData - Données comptables
-   * @param {string} filePath - Chemin du fichier de sortie
-   * @param {Object} formatConfig - Configuration du format
-   * @returns {Promise<Object>} - Informations sur l'export réalisé
-   * @private
-   */
-  async _exportToEBP(accountingData, filePath, formatConfig) {
-    return new Promise((resolve, reject) => {
-      try {
-        // Créer l'en-tête du fichier
-        let content = `Journal;Date;Compte;Libellé;Montant;Sens;Référence\n`;
+        // Titre et en-tête
+        doc.fontSize(18).font('Helvetica-Bold').text('Le Vieux Moulin', { align: 'center' });
+        doc.moveDown(0.5);
         
-        // Ajouter chaque écriture
-        accountingData.entries.forEach(entry => {
-          const date = moment(entry.date).format(formatConfig.dateFormat);
-          let montant, sens;
+        doc.fontSize(14).font('Helvetica').text(`Rapport Comptable - ${this._formatReportType(type)}`, { align: 'center' });
+        doc.moveDown(0.5);
+        
+        doc.fontSize(12).text(`Période : du ${this._formatDate(data.period.startDate)} au ${this._formatDate(data.period.endDate)}`, { align: 'center' });
+        doc.moveDown(2);
+        
+        // Résumé financier
+        doc.fontSize(14).font('Helvetica-Bold').text('Résumé Financier', { underline: true });
+        doc.moveDown(1);
+        
+        const summary = data.summary;
+        
+        doc.fontSize(11).font('Helvetica');
+        doc.text(`Chiffre d'affaires: ${this._formatCurrency(summary.totalSales)}`);
+        doc.text(`Marge brute: ${this._formatCurrency(summary.grossProfit)} (${this._formatPercentage(summary.grossProfitMargin)})`);
+        doc.text(`Résultat d'exploitation: ${this._formatCurrency(summary.operatingProfit)} (${this._formatPercentage(summary.operatingProfitMargin)})`);
+        
+        doc.moveDown(1);
+        doc.text(`Coût des marchandises vendues: ${this._formatCurrency(summary.costOfGoodsSold)}`);
+        doc.text(`Frais de personnel: ${this._formatCurrency(summary.laborCost)}`);
+        doc.text(`Autres dépenses: ${this._formatCurrency(summary.totalExpenses)}`);
+        
+        doc.moveDown(2);
+        
+        // Indicateurs clés
+        doc.fontSize(14).font('Helvetica-Bold').text('Indicateurs Clés', { underline: true });
+        doc.moveDown(1);
+        
+        const kpis = data.kpis;
+        
+        doc.fontSize(11).font('Helvetica');
+        doc.text(`Ratio Food Cost: ${this._formatPercentage(kpis.foodCostPercentage)}`);
+        doc.text(`Ratio Coût Personnel: ${this._formatPercentage(kpis.laborCostPercentage)}`);
+        doc.text(`Ratio Dépenses: ${this._formatPercentage(kpis.expensePercentage)}`);
+        doc.text(`Taux de Profit: ${this._formatPercentage(kpis.profitPercentage)}`);
+        
+        doc.moveDown(2);
+        
+        // Répartition des revenus
+        if (data.transactions && data.transactions.length > 0) {
+          doc.fontSize(14).font('Helvetica-Bold').text('Répartition des Revenus', { underline: true });
+          doc.moveDown(1);
           
-          if (entry.debit > 0) {
-            montant = entry.debit.toFixed(2).replace('.', ',');
-            sens = 'D';
-          } else {
-            montant = entry.credit.toFixed(2).replace('.', ',');
-            sens = 'C';
+          // Grouper les transactions par catégorie
+          const salesByCategory = this._groupSalesByCategory(data.transactions);
+          
+          // Tableau de répartition
+          const categoryTable = {
+            headers: ['Catégorie', 'Montant', 'Pourcentage'],
+            rows: []
+          };
+          
+          for (const [category, amount] of Object.entries(salesByCategory)) {
+            const percentage = (amount / summary.totalSales * 100).toFixed(2);
+            categoryTable.rows.push([
+              category,
+              this._formatCurrency(amount),
+              `${percentage}%`
+            ]);
           }
           
-          content += `${entry.journal};${date};${entry.accountNumber};${entry.label};${montant};${sens};${entry.reference}\n`;
-        });
-        
-        // Écrire le fichier
-        fs.writeFileSync(filePath, content, { encoding: formatConfig.encoding });
-        
-        resolve({ filePath });
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-  
-  /**
-   * Exporte les données comptables au format QuickBooks
-   * @param {Object} accountingData - Données comptables
-   * @param {string} filePath - Chemin du fichier de sortie
-   * @param {Object} formatConfig - Configuration du format
-   * @returns {Promise<Object>} - Informations sur l'export réalisé
-   * @private
-   */
-  async _exportToQuickBooks(accountingData, filePath, formatConfig) {
-    return new Promise((resolve, reject) => {
-      try {
-        // Créer l'en-tête du fichier (format IIF)
-        let content = `!TRNS\tTRNSID\tTRNSTYPE\tDATE\tACCNT\tNAME\tAMOUNT\tMEMO\t\n`;
-        content += `!SPL\tSPLID\tTRNSTYPE\tDATE\tACCNT\tNAME\tAMOUNT\tMEMO\t\n`;
-        content += `!ENDTRNS\t\t\t\t\t\t\t\t\n`;
-        
-        // Grouper les écritures par référence
-        const entriesByReference = accountingData.entries.reduce((acc, entry) => {
-          if (!acc[entry.reference]) {
-            acc[entry.reference] = [];
-          }
+          this._drawTable(doc, categoryTable, { x: 40, y: doc.y, width: 500 });
           
-          acc[entry.reference].push(entry);
-          return acc;
-        }, {});
-        
-        // Générer les transactions QuickBooks
-        let trnsId = 1;
-        let splId = 1;
-        
-        for (const [reference, entries] of Object.entries(entriesByReference)) {
-          const date = moment(entries[0].date).format(formatConfig.dateFormat);
-          const journalType = entries[0].journal;
-          
-          // Première ligne de la transaction
-          content += `TRNS\t${trnsId}\tGENERAL JOURNAL\t${date}\t${entries[0].accountNumber}\t\t${entries[0].debit > 0 ? entries[0].debit.toFixed(2) : -entries[0].credit.toFixed(2)}\t${entries[0].label}\t\n`;
-          
-          // Lignes de ventilation
-          for (let i = 1; i < entries.length; i++) {
-            const entry = entries[i];
-            content += `SPL\t${splId}\tGENERAL JOURNAL\t${date}\t${entry.accountNumber}\t\t${entry.debit > 0 ? entry.debit.toFixed(2) : -entry.credit.toFixed(2)}\t${entry.label}\t\n`;
-            splId++;
-          }
-          
-          // Fin de la transaction
-          content += `ENDTRNS\t\t\t\t\t\t\t\t\n`;
-          trnsId++;
+          doc.moveDown(2);
         }
         
-        // Écrire le fichier
-        fs.writeFileSync(filePath, content, { encoding: formatConfig.encoding });
+        // Répartition des dépenses
+        if (data.expenses && data.expenses.length > 0) {
+          doc.fontSize(14).font('Helvetica-Bold').text('Répartition des Dépenses', { underline: true });
+          doc.moveDown(1);
+          
+          // Grouper les dépenses par catégorie
+          const expensesByCategory = this._groupExpensesByCategory(data.expenses);
+          
+          // Tableau de répartition
+          const expenseTable = {
+            headers: ['Catégorie', 'Montant', 'Pourcentage'],
+            rows: []
+          };
+          
+          for (const [category, amount] of Object.entries(expensesByCategory)) {
+            const percentage = (amount / summary.totalExpenses * 100).toFixed(2);
+            expenseTable.rows.push([
+              this._formatExpenseCategory(category),
+              this._formatCurrency(amount),
+              `${percentage}%`
+            ]);
+          }
+          
+          this._drawTable(doc, expenseTable, { x: 40, y: doc.y, width: 500 });
+          
+          doc.moveDown(2);
+        }
         
-        resolve({ filePath });
+        // Informations sur l'inventaire
+        if (data.inventory) {
+          doc.fontSize(14).font('Helvetica-Bold').text('Valeur des Stocks', { underline: true });
+          doc.moveDown(1);
+          
+          doc.fontSize(11).font('Helvetica');
+          doc.text(`Valeur d'ouverture: ${this._formatCurrency(data.inventory.openingInventoryValue)}`);
+          doc.text(`Valeur de clôture: ${this._formatCurrency(data.inventory.closingInventoryValue)}`);
+          doc.text(`Achats de la période: ${this._formatCurrency(data.inventory.totalPurchases)}`);
+          doc.text(`Consommation de la période: ${this._formatCurrency(data.inventory.totalConsumption)}`);
+          
+          doc.moveDown(2);
+        }
+        
+        // Pied de page
+        const pageCount = doc.bufferedPageRange().count;
+        for (let i = 0; i < pageCount; i++) {
+          doc.switchToPage(i);
+          
+          // Position en bas de page
+          const bottom = doc.page.height - 50;
+          
+          doc.fontSize(8).font('Helvetica').text(
+            `Le Vieux Moulin - Rapport généré le ${moment().format('DD/MM/YYYY HH:mm')} - Page ${i + 1} sur ${pageCount}`,
+            50, bottom, { align: 'center', width: doc.page.width - 100 }
+          );
+        }
+        
+        // Finaliser le document
+        doc.end();
+        
+        // Gestion des événements du flux
+        stream.on('finish', () => resolve(filePath));
+        stream.on('error', reject);
       } catch (error) {
         reject(error);
       }
@@ -807,483 +325,840 @@ class AccountingExporter extends EventEmitter {
   }
   
   /**
-   * Exporte les données comptables au format Excel
-   * @param {Object} accountingData - Données comptables
-   * @param {string} filePath - Chemin du fichier de sortie
-   * @param {Object} formatConfig - Configuration du format
-   * @returns {Promise<Object>} - Informations sur l'export réalisé
+   * Génère un export au format Excel
+   * @param {Object} data - Données comptables
+   * @param {string} type - Type de rapport
+   * @param {Object} options - Options spécifiques
+   * @returns {Promise<string>} - Chemin du fichier généré
    * @private
    */
-  async _exportToExcel(accountingData, filePath, formatConfig) {
+  async _generateExcelExport(data, type, options = {}) {
     try {
-      // Créer un nouveau classeur
-      const workbook = XLSX.utils.book_new();
+      // Déterminer le nom du fichier
+      const fileName = `comptabilite_${type}_${data.period.startDate}_${data.period.endDate}.xlsx`;
+      const filePath = path.join(this.exportPaths.excel, fileName);
       
-      // Créer la feuille principale des écritures
-      const entriesData = [
-        ['Date', 'Journal', 'Compte', 'Libellé', 'Débit', 'Crédit', 'Référence', 'Catégorie']
+      // Créer le workbook
+      const workbook = new ExcelJS.Workbook();
+      
+      // Métadonnées
+      workbook.creator = 'Le Vieux Moulin - Module Comptabilité';
+      workbook.lastModifiedBy = 'Système Automatisé';
+      workbook.created = new Date();
+      workbook.modified = new Date();
+      
+      // Feuille de résumé
+      const summarySheet = workbook.addWorksheet('Résumé Financier');
+      
+      // Mise en forme des colonnes
+      summarySheet.columns = [
+        { header: 'Indicateur', key: 'indicator', width: 30 },
+        { header: 'Valeur', key: 'value', width: 15 },
+        { header: 'Pourcentage', key: 'percentage', width: 15 }
       ];
       
-      // Ajouter chaque écriture
-      accountingData.entries.forEach(entry => {
-        entriesData.push([
-          moment(entry.date).format(formatConfig.dateFormat),
-          entry.journal,
-          entry.accountNumber,
-          entry.label,
-          entry.debit > 0 ? entry.debit : '',
-          entry.credit > 0 ? entry.credit : '',
-          entry.reference,
-          entry.category
-        ]);
-      });
+      // Style des en-têtes
+      summarySheet.getRow(1).font = { bold: true };
+      summarySheet.getRow(1).alignment = { horizontal: 'center' };
       
-      // Ajouter le total
-      entriesData.push(['', '', '', 'TOTAL', accountingData.summary.debit, accountingData.summary.credit, '', '']);
-      
-      // Créer la feuille
-      const entriesSheet = XLSX.utils.aoa_to_sheet(entriesData);
-      
-      // Ajouter la feuille au classeur
-      XLSX.utils.book_append_sheet(workbook, entriesSheet, 'Écritures');
-      
-      // Créer une feuille de résumé
-      const summaryData = [
-        ['Résumé Comptable'],
-        ['Période', `${moment(accountingData.period.start).format('DD/MM/YYYY')} au ${moment(accountingData.period.end).format('DD/MM/YYYY')}`],
-        [''],
-        ['Total Débit', accountingData.summary.debit],
-        ['Total Crédit', accountingData.summary.credit],
-        ['Balance', accountingData.summary.balance],
-        ['Nombre d\'écritures', accountingData.entries.length]
+      // Données de résumé
+      const summary = data.summary;
+      const rows = [
+        { indicator: 'Chiffre d\'affaires', value: summary.totalSales },
+        { indicator: 'Coût des marchandises vendues', value: summary.costOfGoodsSold, percentage: summary.costOfGoodsSold / summary.totalSales },
+        { indicator: 'Marge brute', value: summary.grossProfit, percentage: summary.grossProfitMargin / 100 },
+        { indicator: 'Frais de personnel', value: summary.laborCost, percentage: summary.laborCost / summary.totalSales },
+        { indicator: 'Autres dépenses', value: summary.totalExpenses, percentage: summary.totalExpenses / summary.totalSales },
+        { indicator: 'Résultat d\'exploitation', value: summary.operatingProfit, percentage: summary.operatingProfitMargin / 100 }
       ];
       
-      // Créer la feuille
-      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+      // Ajouter les données
+      summarySheet.addRows(rows);
       
-      // Ajouter la feuille au classeur
-      XLSX.utils.book_append_sheet(workbook, summarySheet, 'Résumé');
+      // Format monétaire
+      summarySheet.getColumn('value').numFmt = '# ##0.00 €';
+      summarySheet.getColumn('percentage').numFmt = '0.00%';
       
-      // Écrire le classeur dans un fichier
-      XLSX.writeFile(workbook, filePath);
-      
-      return { filePath };
-    } catch (error) {
-      throw error;
-    }
-  }
-  
-  /**
-   * Exporte les données comptables au format FEC (Fichier des Écritures Comptables)
-   * @param {Object} accountingData - Données comptables
-   * @param {string} filePath - Chemin du fichier de sortie
-   * @param {Object} formatConfig - Configuration du format
-   * @returns {Promise<Object>} - Informations sur l'export réalisé
-   * @private
-   */
-  async _exportToFEC(accountingData, filePath, formatConfig) {
-    return new Promise((resolve, reject) => {
-      try {
-        // En-tête obligatoire pour le FEC
-        const headers = [
-          'JournalCode', 'JournalLib', 'EcritureNum', 'EcritureDate', 'CompteNum',
-          'CompteLib', 'CompAuxNum', 'CompAuxLib', 'PieceRef', 'PieceDate',
-          'EcritureLib', 'Debit', 'Credit', 'EcritureLet', 'DateLet',
-          'ValidDate', 'Montantdevise', 'Idevise'
+      // Feuille des ventes
+      if (data.transactions && data.transactions.length > 0) {
+        const salesSheet = workbook.addWorksheet('Ventes');
+        
+        // Colonnes des ventes
+        salesSheet.columns = [
+          { header: 'ID', key: 'id', width: 15 },
+          { header: 'Date', key: 'date', width: 12 },
+          { header: 'Total', key: 'total', width: 12 },
+          { header: 'TVA', key: 'taxTotal', width: 12 },
+          { header: 'Méthode de paiement', key: 'paymentMethod', width: 20 }
         ];
         
-        // Définir les libellés des journaux
-        const journalLibs = {
-          'VTE': 'Journal des Ventes',
-          'ACH': 'Journal des Achats',
-          'BNQ': 'Journal de Banque',
-          'OD': 'Journal des Opérations Diverses'
-        };
+        // Style des en-têtes
+        salesSheet.getRow(1).font = { bold: true };
+        salesSheet.getRow(1).alignment = { horizontal: 'center' };
         
-        // Définir les libellés des comptes (simplifié pour l'exemple)
-        const compteLibs = {
-          '512000': 'Banque',
-          '531000': 'Caisse',
-          '607100': 'Achats de marchandises - Food',
-          '607200': 'Achats de marchandises - Beverages',
-          '613000': 'Loyers',
-          '606000': 'Achats non stockés - Énergies',
-          '641000': 'Rémunération du personnel',
-          '645000': 'Charges de sécurité sociale',
-          '707100': 'Ventes de produits - Food',
-          '707200': 'Ventes de produits - Beverages',
-          '707300': 'Ventes de produits - Alcool',
-          '707400': 'Ventes de produits - Takeaway',
-          '708000': 'Autres produits des activités annexes',
-          '445710': 'TVA collectée',
-          '445660': 'TVA déductible',
-          '445510': 'TVA à payer'
-        };
+        // Ajouter les transactions
+        salesSheet.addRows(data.transactions);
         
-        // Créer le contenu du fichier
-        let content = headers.join(formatConfig.delimiter) + '\n';
+        // Format monétaire et date
+        salesSheet.getColumn('total').numFmt = '# ##0.00 €';
+        salesSheet.getColumn('taxTotal').numFmt = '# ##0.00 €';
+        salesSheet.getColumn('date').numFmt = 'dd/mm/yyyy';
         
-        // Ajouter chaque écriture
-        accountingData.entries.forEach((entry, index) => {
-          const entryNum = `${entry.journal}${String(index + 1).padStart(5, '0')}`;
-          const journalLib = journalLibs[entry.journal] || entry.journal;
-          const compteLib = compteLibs[entry.accountNumber] || `Compte ${entry.accountNumber}`;
-          const ecritureDate = moment(entry.date).format(formatConfig.dateFormat);
-          const pieceDate = ecritureDate;
-          const debit = entry.debit.toFixed(2).replace('.', ',');
-          const credit = entry.credit.toFixed(2).replace('.', ',');
-          
-          // Ligne d'écriture au format FEC
-          const line = [
-            entry.journal,
-            journalLib,
-            entryNum,
-            ecritureDate,
-            entry.accountNumber,
-            compteLib,
-            '', // CompAuxNum
-            '', // CompAuxLib
-            entry.reference,
-            pieceDate,
-            entry.label,
-            debit,
-            credit,
-            '', // EcritureLet
-            '', // DateLet
-            ecritureDate, // ValidDate
-            '', // Montantdevise
-            '' // Idevise
-          ];
-          
-          content += line.join(formatConfig.delimiter) + '\n';
-        });
+        // Ajouter les détails des ventes par catégorie
+        const salesByCategory = this._groupSalesByCategory(data.transactions);
         
-        // Écrire le fichier
-        fs.writeFileSync(filePath, content, { encoding: formatConfig.encoding });
+        // Insérer un espace
+        salesSheet.addRow([]);
+        salesSheet.addRow([]);
         
-        resolve({ filePath });
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-  
-  /**
-   * Génère un fichier de balance générale
-   * @param {Object} options - Options de génération
-   * @param {Date|string} options.startDate - Date de début de la période
-   * @param {Date|string} options.endDate - Date de fin de la période
-   * @param {string} options.format - Format de sortie (pdf, excel, csv)
-   * @returns {Promise<Object>} - Informations sur le fichier généré
-   */
-  async generateBalanceSheet(options = {}) {
-    const startDate = options.startDate ? moment(options.startDate) : moment().startOf('month');
-    const endDate = options.endDate ? moment(options.endDate) : moment().endOf('month');
-    const format = options.format || 'excel';
-    
-    try {
-      // Récupérer les données consolidées pour la période
-      const consolidatedData = await this.dataConsolidator.consolidateFinancialData({
-        startDate: startDate.format('YYYY-MM-DD'),
-        endDate: endDate.format('YYYY-MM-DD')
-      });
-      
-      // Préparer les données comptables
-      const accountingData = this._prepareAccountingData(consolidatedData);
-      
-      // Créer le sous-répertoire pour les balances
-      const balanceDir = path.join(this.outputDir, 'balance');
-      if (!fs.existsSync(balanceDir)) {
-        fs.mkdirSync(balanceDir, { recursive: true });
-      }
-      
-      // Générer la balance générale
-      const balanceData = this._generateBalanceData(accountingData);
-      
-      // Définir le chemin du fichier de sortie
-      const fileName = `balance_${startDate.format('YYYYMMDD')}_${endDate.format('YYYYMMDD')}.${format === 'excel' ? 'xlsx' : format}`;
-      const filePath = path.join(balanceDir, fileName);
-      
-      // Exporter dans le format demandé
-      let result;
-      
-      switch (format) {
-        case 'excel':
-          result = await this._exportBalanceToExcel(balanceData, filePath, {
-            startDate,
-            endDate
-          });
-          break;
+        // Ajouter un titre pour les ventes par catégorie
+        const categoryTitleRow = salesSheet.addRow(['Répartition par catégorie']);
+        categoryTitleRow.font = { bold: true, size: 12 };
         
-        case 'csv':
-          result = await this._exportBalanceToCSV(balanceData, filePath, {
-            startDate,
-            endDate
-          });
-          break;
+        // En-têtes des catégories
+        const categoryHeaderRow = salesSheet.addRow(['Catégorie', 'Montant', 'Pourcentage']);
+        categoryHeaderRow.font = { bold: true };
         
-        default:
-          throw new Error(`Format non supporté pour la balance: ${format}`);
-      }
-      
-      console.log(`Balance générale générée: ${filePath}`);
-      
-      return {
-        status: 'success',
-        filePath,
-        fileSize: fs.statSync(filePath).size,
-        format
-      };
-    } catch (error) {
-      console.error('Erreur lors de la génération de la balance générale:', error);
-      
-      // Créer une alerte
-      if (this.alertService) {
-        this.alertService.danger('balance_generation_error',
-          `Erreur lors de la génération de la balance générale: ${error.message}`,
-          {
-            period: {
-              start: startDate.format('YYYY-MM-DD'),
-              end: endDate.format('YYYY-MM-DD')
-            },
-            format,
-            error: error.message
-          }
-        );
-      }
-      
-      throw error;
-    }
-  }
-  
-  /**
-   * Génère les données de la balance générale
-   * @param {Object} accountingData - Données comptables
-   * @returns {Object} - Données de la balance
-   * @private
-   */
-  _generateBalanceData(accountingData) {
-    // Initialiser les données de la balance
-    const balanceData = {
-      accounts: {},
-      totals: {
-        debitStart: 0,
-        creditStart: 0,
-        debitMovement: 0,
-        creditMovement: 0,
-        debitEnd: 0,
-        creditEnd: 0
-      }
-    };
-    
-    // Traiter chaque écriture pour générer la balance
-    accountingData.entries.forEach(entry => {
-      // Créer ou récupérer le compte
-      if (!balanceData.accounts[entry.accountNumber]) {
-        balanceData.accounts[entry.accountNumber] = {
-          number: entry.accountNumber,
-          label: this._getAccountLabel(entry.accountNumber),
-          debitStart: 0,
-          creditStart: 0,
-          debitMovement: 0,
-          creditMovement: 0,
-          debitEnd: 0,
-          creditEnd: 0
-        };
-      }
-      
-      // Ajouter les mouvements
-      if (entry.debit > 0) {
-        balanceData.accounts[entry.accountNumber].debitMovement += entry.debit;
-        balanceData.totals.debitMovement += entry.debit;
-      } else if (entry.credit > 0) {
-        balanceData.accounts[entry.accountNumber].creditMovement += entry.credit;
-        balanceData.totals.creditMovement += entry.credit;
-      }
-    });
-    
-    // Calculer les soldes de fin de période
-    for (const account of Object.values(balanceData.accounts)) {
-      // Solde de fin = Solde de début + Mouvements
-      account.debitEnd = account.debitStart + account.debitMovement;
-      account.creditEnd = account.creditStart + account.creditMovement;
-      
-      // Ajuster les soldes si débit > crédit ou crédit > débit
-      if (account.debitEnd > account.creditEnd) {
-        account.debitEnd -= account.creditEnd;
-        account.creditEnd = 0;
-      } else if (account.creditEnd > account.debitEnd) {
-        account.creditEnd -= account.debitEnd;
-        account.debitEnd = 0;
-      } else {
-        account.debitEnd = 0;
-        account.creditEnd = 0;
-      }
-      
-      // Mettre à jour les totaux
-      balanceData.totals.debitEnd += account.debitEnd;
-      balanceData.totals.creditEnd += account.creditEnd;
-    }
-    
-    return balanceData;
-  }
-  
-  /**
-   * Récupère le libellé d'un compte comptable
-   * @param {string} accountNumber - Numéro de compte
-   * @returns {string} - Libellé du compte
-   * @private
-   */
-  _getAccountLabel(accountNumber) {
-    // Définir les libellés des comptes (simplifié pour l'exemple)
-    const compteLibs = {
-      '512000': 'Banque',
-      '531000': 'Caisse',
-      '607100': 'Achats de marchandises - Food',
-      '607200': 'Achats de marchandises - Beverages',
-      '613000': 'Loyers',
-      '606000': 'Achats non stockés - Énergies',
-      '641000': 'Rémunération du personnel',
-      '645000': 'Charges de sécurité sociale',
-      '707100': 'Ventes de produits - Food',
-      '707200': 'Ventes de produits - Beverages',
-      '707300': 'Ventes de produits - Alcool',
-      '707400': 'Ventes de produits - Takeaway',
-      '708000': 'Autres produits des activités annexes',
-      '445710': 'TVA collectée',
-      '445660': 'TVA déductible',
-      '445510': 'TVA à payer'
-    };
-    
-    return compteLibs[accountNumber] || `Compte ${accountNumber}`;
-  }
-  
-  /**
-   * Exporte la balance générale au format Excel
-   * @param {Object} balanceData - Données de la balance
-   * @param {string} filePath - Chemin du fichier de sortie
-   * @param {Object} options - Options d'export
-   * @returns {Promise<Object>} - Informations sur l'export réalisé
-   * @private
-   */
-  async _exportBalanceToExcel(balanceData, filePath, options = {}) {
-    try {
-      const { startDate, endDate } = options;
-      
-      // Créer un nouveau classeur
-      const workbook = XLSX.utils.book_new();
-      
-      // Créer la feuille de balance
-      const balanceSheet = [
-        [`Balance Générale du ${startDate.format('DD/MM/YYYY')} au ${endDate.format('DD/MM/YYYY')}`],
-        [''],
-        ['Compte', 'Libellé', 'Débit initial', 'Crédit initial', 'Mouvements débit', 'Mouvements crédit', 'Solde débit', 'Solde crédit']
-      ];
-      
-      // Ajouter chaque compte
-      for (const account of Object.values(balanceData.accounts)) {
-        balanceSheet.push([
-          account.number,
-          account.label,
-          account.debitStart,
-          account.creditStart,
-          account.debitMovement,
-          account.creditMovement,
-          account.debitEnd,
-          account.creditEnd
-        ]);
-      }
-      
-      // Ajouter la ligne de total
-      balanceSheet.push([
-        'TOTAL',
-        '',
-        balanceData.totals.debitStart,
-        balanceData.totals.creditStart,
-        balanceData.totals.debitMovement,
-        balanceData.totals.creditMovement,
-        balanceData.totals.debitEnd,
-        balanceData.totals.creditEnd
-      ]);
-      
-      // Créer la feuille
-      const sheet = XLSX.utils.aoa_to_sheet(balanceSheet);
-      
-      // Définir les styles pour le titre
-      sheet['!merges'] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } } // Fusionner les cellules pour le titre
-      ];
-      
-      // Ajouter la feuille au classeur
-      XLSX.utils.book_append_sheet(workbook, sheet, 'Balance');
-      
-      // Écrire le classeur dans un fichier
-      XLSX.writeFile(workbook, filePath);
-      
-      return { filePath };
-    } catch (error) {
-      throw error;
-    }
-  }
-  
-  /**
-   * Exporte la balance générale au format CSV
-   * @param {Object} balanceData - Données de la balance
-   * @param {string} filePath - Chemin du fichier de sortie
-   * @param {Object} options - Options d'export
-   * @returns {Promise<Object>} - Informations sur l'export réalisé
-   * @private
-   */
-  async _exportBalanceToCSV(balanceData, filePath, options = {}) {
-    return new Promise((resolve, reject) => {
-      try {
-        const { startDate, endDate } = options;
-        
-        // Créer l'en-tête du fichier
-        let content = `"Balance Générale du ${startDate.format('DD/MM/YYYY')} au ${endDate.format('DD/MM/YYYY')}"\n\n`;
-        content += `"Compte";"Libellé";"Débit initial";"Crédit initial";"Mouvements débit";"Mouvements crédit";"Solde débit";"Solde crédit"\n`;
-        
-        // Ajouter chaque compte
-        for (const account of Object.values(balanceData.accounts)) {
-          content += `"${account.number}";"${account.label}";"${account.debitStart}";"${account.creditStart}";"${account.debitMovement}";"${account.creditMovement}";"${account.debitEnd}";"${account.creditEnd}"\n`;
+        // Données des catégories
+        for (const [category, amount] of Object.entries(salesByCategory)) {
+          const percentage = amount / summary.totalSales;
+          salesSheet.addRow([category, amount, percentage]);
         }
         
-        // Ajouter la ligne de total
-        content += `"TOTAL";"";"${balanceData.totals.debitStart}";"${balanceData.totals.creditStart}";"${balanceData.totals.debitMovement}";"${balanceData.totals.creditMovement}";"${balanceData.totals.debitEnd}";"${balanceData.totals.creditEnd}"\n`;
+        // Format pour les nouvelles colonnes
+        const categoryDataStartRow = salesSheet.rowCount - Object.keys(salesByCategory).length + 1;
+        const categoryDataEndRow = salesSheet.rowCount;
         
-        // Écrire le fichier
-        fs.writeFileSync(filePath, content, { encoding: 'utf8' });
-        
-        resolve({ filePath });
-      } catch (error) {
-        reject(error);
+        for (let i = categoryDataStartRow; i <= categoryDataEndRow; i++) {
+          salesSheet.getCell(`B${i}`).numFmt = '# ##0.00 €';
+          salesSheet.getCell(`C${i}`).numFmt = '0.00%';
+        }
       }
-    });
+      
+      // Feuille des dépenses
+      if (data.expenses && data.expenses.length > 0) {
+        const expensesSheet = workbook.addWorksheet('Dépenses');
+        
+        // Colonnes des dépenses
+        expensesSheet.columns = [
+          { header: 'ID', key: 'id', width: 15 },
+          { header: 'Date', key: 'date', width: 12 },
+          { header: 'Montant', key: 'amount', width: 12 },
+          { header: 'Catégorie', key: 'category', width: 20 },
+          { header: 'Description', key: 'description', width: 30 },
+          { header: 'Référence', key: 'referenceNumber', width: 15 }
+        ];
+        
+        // Style des en-têtes
+        expensesSheet.getRow(1).font = { bold: true };
+        expensesSheet.getRow(1).alignment = { horizontal: 'center' };
+        
+        // Ajouter les dépenses
+        expensesSheet.addRows(data.expenses);
+        
+        // Format monétaire et date
+        expensesSheet.getColumn('amount').numFmt = '# ##0.00 €';
+        expensesSheet.getColumn('date').numFmt = 'dd/mm/yyyy';
+        
+        // Ajouter les détails des dépenses par catégorie
+        const expensesByCategory = this._groupExpensesByCategory(data.expenses);
+        
+        // Insérer un espace
+        expensesSheet.addRow([]);
+        expensesSheet.addRow([]);
+        
+        // Ajouter un titre pour les dépenses par catégorie
+        const categoryTitleRow = expensesSheet.addRow(['Répartition par catégorie']);
+        categoryTitleRow.font = { bold: true, size: 12 };
+        
+        // En-têtes des catégories
+        const categoryHeaderRow = expensesSheet.addRow(['Catégorie', 'Montant', 'Pourcentage']);
+        categoryHeaderRow.font = { bold: true };
+        
+        // Données des catégories
+        for (const [category, amount] of Object.entries(expensesByCategory)) {
+          const percentage = amount / summary.totalExpenses;
+          expensesSheet.addRow([this._formatExpenseCategory(category), amount, percentage]);
+        }
+        
+        // Format pour les nouvelles colonnes
+        const categoryDataStartRow = expensesSheet.rowCount - Object.keys(expensesByCategory).length + 1;
+        const categoryDataEndRow = expensesSheet.rowCount;
+        
+        for (let i = categoryDataStartRow; i <= categoryDataEndRow; i++) {
+          expensesSheet.getCell(`B${i}`).numFmt = '# ##0.00 €';
+          expensesSheet.getCell(`C${i}`).numFmt = '0.00%';
+        }
+      }
+      
+      // Sauvegarder le workbook
+      await workbook.xlsx.writeFile(filePath);
+      
+      return filePath;
+    } catch (error) {
+      this.logger.error('Erreur lors de la génération de l\'export Excel:', error);
+      throw error;
+    }
   }
   
   /**
-   * Récupère l'historique des exports
-   * @param {Object} options - Options de filtrage
-   * @param {number} options.limit - Nombre maximum de résultats
-   * @param {string} options.format - Filtrer par format
-   * @returns {Array<Object>} - Historique des exports
+   * Génère un export au format CSV
+   * @param {Object} data - Données comptables
+   * @param {string} type - Type de rapport
+   * @param {Object} options - Options spécifiques
+   * @returns {Promise<string>} - Chemin du fichier généré
+   * @private
    */
-  getExportHistory(options = {}) {
-    const limit = options.limit || 100;
-    const format = options.format;
+  async _generateCsvExport(data, type, options = {}) {
+    try {
+      // Déterminer le dossier pour les fichiers CSV
+      const csvDir = path.join(this.exportPaths.csv, `${type}_${data.period.startDate}_${data.period.endDate}`);
+      
+      // Créer le dossier s'il n'existe pas
+      if (!fs.existsSync(csvDir)) {
+        fs.mkdirSync(csvDir, { recursive: true });
+      }
+      
+      // Fichiers à générer
+      const filesPromises = [];
+      
+      // Générer le CSV des transactions
+      if (data.transactions && data.transactions.length > 0) {
+        const transactionsFile = path.join(csvDir, 'transactions.csv');
+        
+        const transactionsPromise = new Promise((resolve, reject) => {
+          const stream = fs.createWriteStream(transactionsFile);
+          
+          // Transformer les données pour le CSV
+          const csvTransactions = data.transactions.map(tx => ({
+            ID: tx.id,
+            Date: moment(tx.date).format('YYYY-MM-DD'),
+            Total: tx.total.toFixed(2),
+            TVA: tx.taxTotal.toFixed(2),
+            'Mode de paiement': tx.paymentMethod || 'Non spécifié',
+            Couverts: tx.covers || 0
+          }));
+          
+          csv
+            .write(csvTransactions, { headers: true })
+            .pipe(stream)
+            .on('finish', () => resolve(transactionsFile))
+            .on('error', reject);
+        });
+        
+        filesPromises.push(transactionsPromise);
+      }
+      
+      // Générer le CSV des dépenses
+      if (data.expenses && data.expenses.length > 0) {
+        const expensesFile = path.join(csvDir, 'depenses.csv');
+        
+        const expensesPromise = new Promise((resolve, reject) => {
+          const stream = fs.createWriteStream(expensesFile);
+          
+          // Transformer les données pour le CSV
+          const csvExpenses = data.expenses.map(exp => ({
+            ID: exp.id,
+            Date: moment(exp.date).format('YYYY-MM-DD'),
+            Montant: exp.amount.toFixed(2),
+            Catégorie: exp.category || 'Non catégorisé',
+            Description: exp.description || '',
+            Référence: exp.referenceNumber || ''
+          }));
+          
+          csv
+            .write(csvExpenses, { headers: true })
+            .pipe(stream)
+            .on('finish', () => resolve(expensesFile))
+            .on('error', reject);
+        });
+        
+        filesPromises.push(expensesPromise);
+      }
+      
+      // Générer le CSV de résumé
+      const summaryFile = path.join(csvDir, 'resume.csv');
+      
+      const summaryPromise = new Promise((resolve, reject) => {
+        const stream = fs.createWriteStream(summaryFile);
+        
+        // Données de résumé
+        const summary = data.summary;
+        const csvSummary = [
+          { Indicateur: 'Chiffre d\'affaires', Valeur: summary.totalSales.toFixed(2), Pourcentage: '' },
+          { Indicateur: 'Coût des marchandises vendues', Valeur: summary.costOfGoodsSold.toFixed(2), Pourcentage: (summary.costOfGoodsSold / summary.totalSales * 100).toFixed(2) + '%' },
+          { Indicateur: 'Marge brute', Valeur: summary.grossProfit.toFixed(2), Pourcentage: summary.grossProfitMargin.toFixed(2) + '%' },
+          { Indicateur: 'Frais de personnel', Valeur: summary.laborCost.toFixed(2), Pourcentage: (summary.laborCost / summary.totalSales * 100).toFixed(2) + '%' },
+          { Indicateur: 'Autres dépenses', Valeur: summary.totalExpenses.toFixed(2), Pourcentage: (summary.totalExpenses / summary.totalSales * 100).toFixed(2) + '%' },
+          { Indicateur: 'Résultat d\'exploitation', Valeur: summary.operatingProfit.toFixed(2), Pourcentage: summary.operatingProfitMargin.toFixed(2) + '%' }
+        ];
+        
+        csv
+          .write(csvSummary, { headers: true })
+          .pipe(stream)
+          .on('finish', () => resolve(summaryFile))
+          .on('error', reject);
+      });
+      
+      filesPromises.push(summaryPromise);
+      
+      // Attendre que tous les fichiers soient générés
+      await Promise.all(filesPromises);
+      
+      // Retourner le chemin du dossier
+      return csvDir;
+    } catch (error) {
+      this.logger.error('Erreur lors de la génération de l\'export CSV:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Génère un export au format Sage
+   * @param {Object} data - Données comptables
+   * @param {string} type - Type de rapport
+   * @param {Object} options - Options spécifiques
+   * @returns {Promise<string>} - Chemin du fichier généré
+   * @private
+   */
+  async _generateSageExport(data, type, options = {}) {
+    try {
+      // Déterminer le nom du fichier
+      const fileName = `sage_export_${type}_${data.period.startDate}_${data.period.endDate}.csv`;
+      const filePath = path.join(this.exportPaths.sage, fileName);
+      
+      // Récupérer le mapping des comptes
+      const accountMapping = this.exportConfig.sage?.accountMapping || this._getDefaultAccountMapping();
+      
+      // Créer les données pour l'export Sage
+      const sageEntries = [];
+      
+      // Ajouter les transactions de vente
+      if (data.transactions && data.transactions.length > 0) {
+        for (const transaction of data.transactions) {
+          const date = moment(transaction.date).format('DD/MM/YYYY');
+          const journal = 'VEN'; // Journal des ventes
+          const accountNumber = accountMapping.sales_account || '707000'; // Compte de vente
+          const reference = transaction.id;
+          const label = `Vente du ${date}`;
+          const amount = transaction.total.toFixed(2);
+          
+          // Écriture comptable pour la vente
+          sageEntries.push({
+            JournalCode: journal,
+            Date: date,
+            NumPiece: reference,
+            CompteGénéral: accountNumber,
+            CompteAuxiliaire: '',
+            Libellé: label,
+            Débit: '',
+            Crédit: amount,
+            CodeTaxe: 'C10', // TVA collectée 10%
+            Devise: 'EUR'
+          });
+          
+          // Écriture pour la TVA
+          if (transaction.taxTotal) {
+            const vatAccountNumber = accountMapping.vat_collected || '445710'; // TVA collectée
+            
+            sageEntries.push({
+              JournalCode: journal,
+              Date: date,
+              NumPiece: reference,
+              CompteGénéral: vatAccountNumber,
+              CompteAuxiliaire: '',
+              Libellé: `TVA sur ${label}`,
+              Débit: '',
+              Crédit: transaction.taxTotal.toFixed(2),
+              CodeTaxe: '',
+              Devise: 'EUR'
+            });
+          }
+          
+          // Écriture pour la contrepartie (caisse ou banque)
+          const paymentMethod = transaction.paymentMethod || 'CARD';
+          const contrepartieAccount = paymentMethod === 'CASH' ? 
+            accountMapping.cash_account || '531000' : // Caisse
+            accountMapping.bank_account || '512000';  // Banque
+          
+          sageEntries.push({
+            JournalCode: journal,
+            Date: date,
+            NumPiece: reference,
+            CompteGénéral: contrepartieAccount,
+            CompteAuxiliaire: '',
+            Libellé: `Règlement ${label}`,
+            Débit: (parseFloat(amount) + (transaction.taxTotal || 0)).toFixed(2),
+            Crédit: '',
+            CodeTaxe: '',
+            Devise: 'EUR'
+          });
+        }
+      }
+      
+      // Ajouter les dépenses
+      if (data.expenses && data.expenses.length > 0) {
+        for (const expense of data.expenses) {
+          const date = moment(expense.date).format('DD/MM/YYYY');
+          const journal = 'ACH'; // Journal des achats
+          const category = expense.category || 'other';
+          const accountNumber = accountMapping[`expense_${category.toLowerCase()}`] || accountMapping.expense_other || '606000'; // Compte de charge
+          const reference = expense.referenceNumber || expense.id;
+          const label = expense.description || `Dépense ${category}`;
+          const amount = expense.amount.toFixed(2);
+          
+          // Écriture comptable pour la dépense
+          sageEntries.push({
+            JournalCode: journal,
+            Date: date,
+            NumPiece: reference,
+            CompteGénéral: accountNumber,
+            CompteAuxiliaire: '',
+            Libellé: label,
+            Débit: amount,
+            Crédit: '',
+            CodeTaxe: 'D10', // TVA déductible 10%
+            Devise: 'EUR'
+          });
+          
+          // Écriture pour la contrepartie (banque généralement)
+          const paymentMethod = expense.paymentMethod || 'BANK';
+          const contrepartieAccount = paymentMethod === 'CASH' ? 
+            accountMapping.cash_account || '531000' : // Caisse
+            accountMapping.bank_account || '512000';  // Banque
+          
+          sageEntries.push({
+            JournalCode: journal,
+            Date: date,
+            NumPiece: reference,
+            CompteGénéral: contrepartieAccount,
+            CompteAuxiliaire: '',
+            Libellé: `Règlement ${label}`,
+            Débit: '',
+            Crédit: amount,
+            CodeTaxe: '',
+            Devise: 'EUR'
+          });
+        }
+      }
+      
+      // Écrire le fichier CSV
+      return new Promise((resolve, reject) => {
+        const stream = fs.createWriteStream(filePath);
+        
+        csv
+          .write(sageEntries, { headers: true })
+          .pipe(stream)
+          .on('finish', () => resolve(filePath))
+          .on('error', reject);
+      });
+    } catch (error) {
+      this.logger.error('Erreur lors de la génération de l\'export Sage:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Génère un export au format FEC (Fichier des Écritures Comptables)
+   * @param {Object} data - Données comptables
+   * @param {string} type - Type de rapport
+   * @param {Object} options - Options spécifiques
+   * @returns {Promise<string>} - Chemin du fichier généré
+   * @private
+   */
+  async _generateFecExport(data, type, options = {}) {
+    try {
+      // Récupérer l'année fiscale
+      const year = moment(data.period.startDate).year();
+      
+      // Déterminer le nom du fichier
+      const fileName = `FEC${year}_${type}_${data.period.startDate}_${data.period.endDate}.txt`;
+      const filePath = path.join(this.exportPaths.fec, fileName);
+      
+      // Récupérer le mapping des comptes
+      const accountMapping = this.exportConfig.sage?.accountMapping || this._getDefaultAccountMapping();
+      
+      // Récupérer les informations de l'entreprise
+      const companyInfo = this.exportConfig.companyInfo || {
+        siret: '12345678901234',
+        siren: '123456789',
+        name: 'LE VIEUX MOULIN'
+      };
+      
+      // Créer les données pour l'export FEC
+      const fecEntries = [];
+      
+      // Numéro d'écriture (Journal + numéro séquentiel pour chaque écriture)
+      let ecritureNum = 0;
+      
+      // Ajouter les transactions de vente
+      if (data.transactions && data.transactions.length > 0) {
+        for (const transaction of data.transactions) {
+          ecritureNum++;
+          
+          const dateEcr = moment(transaction.date).format('YYYYMMDD');
+          const journal = 'VEN'; // Journal des ventes
+          const ecritureLib = `Vente du ${moment(transaction.date).format('DD/MM/YYYY')}`;
+          const pieceRef = transaction.id;
+          
+          // Écriture comptable pour la vente (crédit)
+          const compteNum = accountMapping.sales_account || '707000'; // Compte de vente
+          const debit = 0;
+          const credit = transaction.total;
+          
+          fecEntries.push([
+            `JournalCode=${journal}`,
+            `JournalLib=Journal des ventes`,
+            `EcritureNum=${ecritureNum}`,
+            `EcritureDate=${dateEcr}`,
+            `CompteNum=${compteNum}`,
+            `CompteLib=Ventes`,
+            `PieceRef=${pieceRef}`,
+            `PieceDate=${dateEcr}`,
+            `EcritureLib=${ecritureLib}`,
+            `Debit=${debit.toFixed(2)}`,
+            `Credit=${credit.toFixed(2)}`,
+            `EcritureLet=`,
+            `DateLet=`,
+            `ValidDate=${dateEcr}`,
+            `Montantdevise=${credit.toFixed(2)}`,
+            `Idevise=EUR`
+          ].join('\t'));
+          
+          // Écriture pour la contrepartie (débit)
+          const paymentMethod = transaction.paymentMethod || 'CARD';
+          const contrepartieAccount = paymentMethod === 'CASH' ? 
+            accountMapping.cash_account || '531000' : // Caisse
+            accountMapping.bank_account || '512000';  // Banque
+          
+          const contrepartieLib = paymentMethod === 'CASH' ? 'Caisse' : 'Banque';
+          
+          fecEntries.push([
+            `JournalCode=${journal}`,
+            `JournalLib=Journal des ventes`,
+            `EcritureNum=${ecritureNum}`,
+            `EcritureDate=${dateEcr}`,
+            `CompteNum=${contrepartieAccount}`,
+            `CompteLib=${contrepartieLib}`,
+            `PieceRef=${pieceRef}`,
+            `PieceDate=${dateEcr}`,
+            `EcritureLib=${ecritureLib}`,
+            `Debit=${credit.toFixed(2)}`,
+            `Credit=${debit.toFixed(2)}`,
+            `EcritureLet=`,
+            `DateLet=`,
+            `ValidDate=${dateEcr}`,
+            `Montantdevise=${credit.toFixed(2)}`,
+            `Idevise=EUR`
+          ].join('\t'));
+        }
+      }
+      
+      // Ajouter les dépenses
+      if (data.expenses && data.expenses.length > 0) {
+        for (const expense of data.expenses) {
+          ecritureNum++;
+          
+          const dateEcr = moment(expense.date).format('YYYYMMDD');
+          const journal = 'ACH'; // Journal des achats
+          const ecritureLib = expense.description || `Dépense ${expense.category || 'diverse'}`;
+          const pieceRef = expense.referenceNumber || expense.id;
+          
+          // Écriture comptable pour la dépense (débit)
+          const category = expense.category || 'other';
+          const compteNum = accountMapping[`expense_${category.toLowerCase()}`] || accountMapping.expense_other || '606000';
+          const debit = expense.amount;
+          const credit = 0;
+          
+          fecEntries.push([
+            `JournalCode=${journal}`,
+            `JournalLib=Journal des achats`,
+            `EcritureNum=${ecritureNum}`,
+            `EcritureDate=${dateEcr}`,
+            `CompteNum=${compteNum}`,
+            `CompteLib=Charges ${category}`,
+            `PieceRef=${pieceRef}`,
+            `PieceDate=${dateEcr}`,
+            `EcritureLib=${ecritureLib}`,
+            `Debit=${debit.toFixed(2)}`,
+            `Credit=${credit.toFixed(2)}`,
+            `EcritureLet=`,
+            `DateLet=`,
+            `ValidDate=${dateEcr}`,
+            `Montantdevise=${debit.toFixed(2)}`,
+            `Idevise=EUR`
+          ].join('\t'));
+          
+          // Écriture pour la contrepartie (crédit)
+          const paymentMethod = expense.paymentMethod || 'BANK';
+          const contrepartieAccount = paymentMethod === 'CASH' ? 
+            accountMapping.cash_account || '531000' : // Caisse
+            accountMapping.bank_account || '512000';  // Banque
+          
+          const contrepartieLib = paymentMethod === 'CASH' ? 'Caisse' : 'Banque';
+          
+          fecEntries.push([
+            `JournalCode=${journal}`,
+            `JournalLib=Journal des achats`,
+            `EcritureNum=${ecritureNum}`,
+            `EcritureDate=${dateEcr}`,
+            `CompteNum=${contrepartieAccount}`,
+            `CompteLib=${contrepartieLib}`,
+            `PieceRef=${pieceRef}`,
+            `PieceDate=${dateEcr}`,
+            `EcritureLib=${ecritureLib}`,
+            `Debit=${credit.toFixed(2)}`,
+            `Credit=${debit.toFixed(2)}`,
+            `EcritureLet=`,
+            `DateLet=`,
+            `ValidDate=${dateEcr}`,
+            `Montantdevise=${debit.toFixed(2)}`,
+            `Idevise=EUR`
+          ].join('\t'));
+        }
+      }
+      
+      // Créer l'en-tête FEC
+      const header = [
+        'JournalCode',
+        'JournalLib',
+        'EcritureNum',
+        'EcritureDate',
+        'CompteNum',
+        'CompteLib',
+        'PieceRef',
+        'PieceDate',
+        'EcritureLib',
+        'Debit',
+        'Credit',
+        'EcritureLet',
+        'DateLet',
+        'ValidDate',
+        'Montantdevise',
+        'Idevise'
+      ].join('\t');
+      
+      // Écrire le fichier
+      const content = [header].concat(fecEntries).join('\n');
+      fs.writeFileSync(filePath, content);
+      
+      return filePath;
+    } catch (error) {
+      this.logger.error('Erreur lors de la génération de l\'export FEC:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Groupe les ventes par catégorie
+   * @param {Array} transactions - Transactions
+   * @returns {Object} - Montant par catégorie
+   * @private
+   */
+  _groupSalesByCategory(transactions) {
+    const categories = {};
     
-    // Filtrer par format si spécifié
-    let filteredHistory = this.exportHistory;
-    
-    if (format) {
-      filteredHistory = filteredHistory.filter(export => export.format === format);
+    for (const transaction of transactions) {
+      for (const item of transaction.items || []) {
+        const category = item.category || 'Non catégorisé';
+        
+        if (!categories[category]) {
+          categories[category] = 0;
+        }
+        
+        categories[category] += item.total || 0;
+      }
     }
     
-    // Trier par date décroissante (plus récent en premier)
-    filteredHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    // Si aucun détail d'item n'est disponible, catégoriser par transaction complète
+    if (Object.keys(categories).length === 0) {
+      for (const transaction of transactions) {
+        const category = 'Ventes générales';
+        
+        if (!categories[category]) {
+          categories[category] = 0;
+        }
+        
+        categories[category] += transaction.total || 0;
+      }
+    }
     
-    // Limiter le nombre de résultats
-    return filteredHistory.slice(0, limit);
+    return categories;
+  }
+  
+  /**
+   * Groupe les dépenses par catégorie
+   * @param {Array} expenses - Dépenses
+   * @returns {Object} - Montant par catégorie
+   * @private
+   */
+  _groupExpensesByCategory(expenses) {
+    const categories = {};
+    
+    for (const expense of expenses) {
+      const category = expense.category || 'other';
+      
+      if (!categories[category]) {
+        categories[category] = 0;
+      }
+      
+      categories[category] += expense.amount || 0;
+    }
+    
+    return categories;
+  }
+  
+  /**
+   * Dessine un tableau dans un document PDF
+   * @param {PDFDocument} doc - Document PDF
+   * @param {Object} table - Configuration du tableau (headers, rows)
+   * @param {Object} options - Options de dessin (x, y, width)
+   * @private
+   */
+  _drawTable(doc, table, options = {}) {
+    const { x = 50, y = doc.y, width = 500 } = options;
+    
+    const { headers, rows } = table;
+    const columnCount = headers.length;
+    const columnWidth = width / columnCount;
+    
+    let currentY = y;
+    
+    // En-têtes
+    doc.font('Helvetica-Bold');
+    for (let i = 0; i < headers.length; i++) {
+      doc.text(headers[i], x + (i * columnWidth), currentY, {
+        width: columnWidth,
+        align: 'left'
+      });
+    }
+    
+    currentY += 20;
+    
+    // Ligne de séparation
+    doc.moveTo(x, currentY - 10)
+       .lineTo(x + width, currentY - 10)
+       .stroke();
+    
+    // Lignes de données
+    doc.font('Helvetica');
+    for (const row of rows) {
+      for (let i = 0; i < row.length; i++) {
+        doc.text(row[i], x + (i * columnWidth), currentY, {
+          width: columnWidth,
+          align: i === 0 ? 'left' : 'right'
+        });
+      }
+      
+      currentY += 20;
+    }
+    
+    // Mettre à jour la position du curseur
+    doc.y = currentY + 10;
+  }
+  
+  /**
+   * Formate un montant en devise
+   * @param {number} amount - Montant à formater
+   * @returns {string} - Montant formaté
+   * @private
+   */
+  _formatCurrency(amount) {
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
+  }
+  
+  /**
+   * Formate un pourcentage
+   * @param {number} value - Valeur à formater
+   * @returns {string} - Pourcentage formaté
+   * @private
+   */
+  _formatPercentage(value) {
+    return `${value.toFixed(2)}%`;
+  }
+  
+  /**
+   * Formate une date
+   * @param {string|Date} date - Date à formater
+   * @returns {string} - Date formatée
+   * @private
+   */
+  _formatDate(date) {
+    return moment(date).format('DD/MM/YYYY');
+  }
+  
+  /**
+   * Formate le type de rapport
+   * @param {string} type - Type de rapport
+   * @returns {string} - Type formaté
+   * @private
+   */
+  _formatReportType(type) {
+    switch (type) {
+      case 'daily':
+        return 'Journalier';
+      case 'weekly':
+        return 'Hebdomadaire';
+      case 'monthly':
+        return 'Mensuel';
+      case 'quarterly':
+        return 'Trimestriel';
+      case 'annual':
+        return 'Annuel';
+      default:
+        return type;
+    }
+  }
+  
+  /**
+   * Formate une catégorie de dépense
+   * @param {string} category - Catégorie
+   * @returns {string} - Catégorie formatée
+   * @private
+   */
+  _formatExpenseCategory(category) {
+    const categoryMap = {
+      supplies: 'Fournitures',
+      utilities: 'Charges (eau, électricité, etc.)',
+      rent: 'Loyer',
+      marketing: 'Marketing',
+      maintenance: 'Maintenance',
+      operating: 'Frais d\'exploitation',
+      other: 'Autres dépenses'
+    };
+    
+    return categoryMap[category] || category;
+  }
+  
+  /**
+   * Retourne le mapping des comptes par défaut
+   * @returns {Object} - Mapping des comptes
+   * @private
+   */
+  _getDefaultAccountMapping() {
+    return {
+      // Comptes de produits
+      sales_account: '707000', // Ventes de marchandises
+      sales_food: '707100',    // Ventes de nourriture
+      sales_beverage: '707200', // Ventes de boissons
+      
+      // Comptes de charges
+      expense_supplies: '607000',  // Achats de marchandises
+      expense_utilities: '606100', // Eau, électricité, etc.
+      expense_rent: '613000',      // Loyers
+      expense_marketing: '623000', // Publicité
+      expense_maintenance: '615000', // Entretien et réparations
+      expense_operating: '628000',   // Charges diverses de gestion courante
+      expense_other: '628100',       // Autres charges
+      
+      // Comptes de trésorerie
+      bank_account: '512000',  // Banque
+      cash_account: '531000',  // Caisse
+      
+      // Comptes de TVA
+      vat_collected: '445710', // TVA collectée
+      vat_deductible: '445660' // TVA déductible
+    };
   }
 }
 
