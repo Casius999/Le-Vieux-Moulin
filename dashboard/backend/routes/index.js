@@ -14,6 +14,8 @@ const marketingRoutes = require('./marketingRoutes');
 const financeRoutes = require('./financeRoutes');
 const staffRoutes = require('./staffRoutes');
 const dashboardRoutes = require('./dashboardRoutes');
+const iotRoutes = require('./iotRoutes');
+const forecastRoutes = require('./forecastRoutes');
 
 // Application des routes
 router.use('/auth', authRoutes);
@@ -23,6 +25,8 @@ router.use('/marketing', marketingRoutes);
 router.use('/finance', financeRoutes);
 router.use('/staff', staffRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use('/iot', iotRoutes);
+router.use('/forecast', forecastRoutes);
 
 // Route de base pour vérifier que l'API fonctionne
 router.get('/', (req, res) => {
