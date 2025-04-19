@@ -5,6 +5,7 @@
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-Proprietary-red.svg)
 ![Status](https://img.shields.io/badge/status-In%20Development-yellow.svg)
+![Tests](https://img.shields.io/github/actions/workflow/status/Casius999/Le-Vieux-Moulin/ci.yml?label=tests)
 
 ## Présentation
 
@@ -34,6 +35,8 @@ Ce dépôt contient l'intégralité du système de gestion intelligente dévelop
 
 - **[REQUIREMENTS.md](./REQUIREMENTS.md)** : Spécifications détaillées du projet
 
+- **[TEST_GUIDELINES.md](./TEST_GUIDELINES.md)** : Directives pour les tests et l'intégration continue
+
 - **[/docs/](./docs/)** : Documentation générale du projet
 
 - **[/iot/](./iot/)** : Module de gestion des capteurs IoT
@@ -49,6 +52,18 @@ Ce dépôt contient l'intégralité du système de gestion intelligente dévelop
 - **[/marketing/](./marketing/)** - Module marketing et communication automatisée
   - [/marketing/recipe_suggestion/](./marketing/recipe_suggestion/) - **Module fonctionnel** de suggestion de recettes et promotions
   - [/marketing/communication_module/](./marketing/communication_module/) - **Module fonctionnel** de communication et d'automatisation marketing
+
+- **[/tests/](./tests/)** - Tests unitaires et d'intégration
+  - [/tests/iot/](./tests/iot/) - Tests pour le module IoT
+  - [/tests/integration/](./tests/integration/) - Tests pour le module d'intégration API
+  - [/tests/ml/](./tests/ml/) - Tests pour le module ML
+  - [/tests/marketing/](./tests/marketing/) - Tests pour le module marketing
+  - [/tests/ui/](./tests/ui/) - Tests pour le module UI
+  - [/tests/accounting/](./tests/accounting/) - Tests pour le module comptabilité
+  - [/tests/integration_all/](./tests/integration_all/) - Tests d'intégration cross-module
+
+- **[/.github/workflows/](/.github/workflows/)** - Configuration CI/CD
+  - [ci.yml](/.github/workflows/ci.yml) - Pipeline d'intégration continue
 
 - **Modules en cours de développement** :
   - `/ui/` - Interfaces utilisateur (tablettes, dashboards)
@@ -127,7 +142,48 @@ Si vous reprenez ce projet pour la première fois, voici comment vous orienter :
 
 7. **Module de communication marketing** : Le [module de communication](./marketing/communication_module/) centralise et automatise toutes les actions de communication du restaurant. Consultez sa [documentation technique](./marketing/communication_module/COMMUNICATION.md) et son [guide d'installation](./marketing/communication_module/INSTALL.md) pour comprendre son fonctionnement et son déploiement.
 
-8. **Conventions de code** : Suivez les directives du fichier [CONTRIBUTING.md](./CONTRIBUTING.md) pour maintenir la cohérence du code.
+8. **Tests et CI/CD** : Consultez le fichier [TEST_GUIDELINES.md](./TEST_GUIDELINES.md) pour comprendre comment exécuter les tests, ajouter de nouveaux tests et utiliser le pipeline d'intégration continue.
+
+9. **Conventions de code** : Suivez les directives du fichier [CONTRIBUTING.md](./CONTRIBUTING.md) pour maintenir la cohérence du code.
+
+## Tests et Intégration Continue
+
+Le projet utilise un système complet de tests automatisés et d'intégration continue pour garantir la qualité du code :
+
+### Structure des Tests
+
+- **Tests unitaires** : Vérifient le comportement de chaque composant isolé
+- **Tests d'intégration** : Vérifient les interactions entre les composants d'un même module
+- **Tests système** : Vérifient les interactions entre différents modules (cross-module)
+
+### Exécution des Tests
+
+Pour exécuter les tests en local :
+
+```bash
+# Installation des dépendances de test
+pip install pytest pytest-cov
+
+# Exécution de tous les tests
+pytest
+
+# Exécution des tests d'un module spécifique
+pytest tests/iot/
+
+# Exécution avec rapport de couverture
+pytest --cov=.
+```
+
+### Intégration Continue
+
+Le projet utilise GitHub Actions pour l'intégration continue :
+
+- **Lint** : Vérification automatique du style de code
+- **Tests** : Exécution automatique des tests à chaque push et pull request
+- **Couverture** : Génération de rapports de couverture de code
+- **Déploiement** : Déploiement automatique vers les environnements appropriés
+
+Pour plus de détails, consultez le fichier [TEST_GUIDELINES.md](./TEST_GUIDELINES.md) et la configuration CI/CD dans [.github/workflows/ci.yml](./.github/workflows/ci.yml).
 
 ## Scalabilité
 
