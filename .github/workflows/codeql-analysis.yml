@@ -1,0 +1,71 @@
+name: "CodeQL Security Analysis"
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 3 * * 0'  # Exécution tous les dimanches à 3h00 du matin
+
+# Définition des autorisations minimales nécessaires
+permissions:
+  actions: read
+  contents: read
+  security-events: write  # Nécessaire pour télécharger les résultats CodeQL
+
+jobs:
+  analyze:
+    name: Analyze Code
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'javascript', 'python' ]
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        # Nous devons récupérer l'historique complet pour une analyse précise
+        fetch-depth: 0
+    
+    # Initialiser l'outil CodeQL pour la détection de vulnérabilités
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        # Spécifier les requêtes de sécurité supplémentaires si nécessaire
+        queries: security-extended,security-and-quality
+    
+    # Configuration automatique pour la construction (pour les langages compilés)
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+    
+    # Analyse CodeQL
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{ matrix.language }}"
+        upload: true
+    
+    # Génération d'un rapport de sécurité (facultatif)
+    - name: Generate Security Report
+      if: always()
+      run: |
+        mkdir -p security-reports
+        echo "# Rapport d'analyse de sécurité CodeQL" > security-reports/codeql-report-${{ matrix.language }}.md
+        echo "Date d'exécution: $(date)" >> security-reports/codeql-report-${{ matrix.language }}.md
+        echo "Langage analysé: ${{ matrix.language }}" >> security-reports/codeql-report-${{ matrix.language }}.md
+        echo "Résultat disponible dans l'onglet Security de GitHub" >> security-reports/codeql-report-${{ matrix.language }}.md
+    
+    # Archiver les rapports de sécurité
+    - name: Archive Security Reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-reports-${{ matrix.language }}
+        path: security-reports/
+        retention-days: 90
