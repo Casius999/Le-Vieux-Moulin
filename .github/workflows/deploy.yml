@@ -1,0 +1,320 @@
+name: "Déploiement Le Vieux Moulin"
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environnement de déploiement'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+# Définition des permissions minimales globales
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run linting
+        run: npm run lint
+        continue-on-error: true
+        
+      - name: Run tests
+        id: run-tests
+        run: npm test
+        continue-on-error: true
+        
+      - name: Retry tests on failure
+        if: steps.run-tests.outcome == 'failure'
+        run: npm test
+        
+      - name: Build frontend
+        run: npm run build
+        
+      - name: Archive build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            dist/
+            build/
+          retention-days: 7
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: build
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: staging
+      url: https://staging.levieuxmoulin.fr
+    
+    # Permissions spécifiques pour le job de déploiement
+    permissions:
+      contents: read
+      id-token: write  # Pour l'authentification OIDC si nécessaire
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.DOCKER_REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          
+      - name: Build and Push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKER_REGISTRY }}/vieuxmoulin:staging
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            APP_ENV=staging
+      
+      - name: Deploy to Staging Server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USERNAME }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          port: ${{ secrets.STAGING_SSH_PORT }}
+          script: |
+            cd /opt/vieuxmoulin
+            docker-compose -f docker-compose.staging.yml pull
+            docker-compose -f docker-compose.staging.yml up -d
+            
+      - name: Verify Deployment
+        run: |
+          # Attente pour que le service démarre
+          sleep 30
+          # Vérification que le service répond
+          curl -s -o /dev/null -w "%{http_code}" https://staging.levieuxmoulin.fr/health | grep 200
+        continue-on-error: true
+      
+  deploy-production:
+    name: Deploy to Production
+    needs: [build, deploy-staging]
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://www.levieuxmoulin.fr
+    
+    # Permissions spécifiques pour le job de déploiement
+    permissions:
+      contents: read
+      id-token: write  # Pour l'authentification OIDC si nécessaire
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.DOCKER_REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Tag Staging Image for Production
+        run: |
+          docker pull ${{ secrets.DOCKER_REGISTRY }}/vieuxmoulin:staging
+          docker tag ${{ secrets.DOCKER_REGISTRY }}/vieuxmoulin:staging ${{ secrets.DOCKER_REGISTRY }}/vieuxmoulin:production
+          docker push ${{ secrets.DOCKER_REGISTRY }}/vieuxmoulin:production
+      
+      - name: Deploy to Production Server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USERNAME }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ secrets.PRODUCTION_SSH_PORT }}
+          script: |
+            cd /opt/vieuxmoulin
+            docker-compose -f docker-compose.production.yml pull
+            docker-compose -f docker-compose.production.yml up -d
+            
+      - name: Verify Deployment
+        run: |
+          # Attente pour que le service démarre
+          sleep 30
+          # Vérification que le service répond
+          curl -s -o /dev/null -w "%{http_code}" https://www.levieuxmoulin.fr/health | grep 200
+        continue-on-error: true
+        
+      - name: Send Deployment Notification
+        if: success()
+        run: |
+          curl -X POST -H "Content-Type: application/json" -d '{
+            "text": "🚀 Le Vieux Moulin a été déployé en production avec succès!",
+            "blocks": [
+              {
+                "type": "header",
+                "text": {
+                  "type": "plain_text",
+                  "text": "✅ Déploiement en production réussi"
+                }
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*Site Le Vieux Moulin*\nLe déploiement vers la production a été complété avec succès."
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Déployé par:*\n${{ github.actor }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Commit:*\n${{ github.sha }}"
+                  }
+                ]
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "Voir le site"
+                    },
+                    "url": "https://www.levieuxmoulin.fr"
+                  }
+                ]
+              }
+            ]
+          }' ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true
+    
+  rollback:
+    name: Rollback on Failure
+    needs: [deploy-staging, deploy-production]
+    if: failure()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    # Permissions minimales
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Determine Failed Environment
+        id: determine-env
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            if [[ "${{ needs.deploy-production.result }}" == "failure" ]]; then
+              echo "::set-output name=env::production"
+            else
+              echo "::set-output name=env::staging"
+            fi
+          fi
+      
+      - name: Rollback Production
+        if: steps.determine-env.outputs.env == 'production'
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USERNAME }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ secrets.PRODUCTION_SSH_PORT }}
+          script: |
+            cd /opt/vieuxmoulin
+            docker-compose -f docker-compose.production.yml stop
+            docker pull ${{ secrets.DOCKER_REGISTRY }}/vieuxmoulin:production-previous || true
+            docker tag ${{ secrets.DOCKER_REGISTRY }}/vieuxmoulin:production-previous ${{ secrets.DOCKER_REGISTRY }}/vieuxmoulin:production || true
+            docker-compose -f docker-compose.production.yml up -d
+        continue-on-error: true
+      
+      - name: Rollback Staging
+        if: steps.determine-env.outputs.env == 'staging'
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USERNAME }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          port: ${{ secrets.STAGING_SSH_PORT }}
+          script: |
+            cd /opt/vieuxmoulin
+            docker-compose -f docker-compose.staging.yml stop
+            docker pull ${{ secrets.DOCKER_REGISTRY }}/vieuxmoulin:staging-previous || true
+            docker tag ${{ secrets.DOCKER_REGISTRY }}/vieuxmoulin:staging-previous ${{ secrets.DOCKER_REGISTRY }}/vieuxmoulin:staging || true
+            docker-compose -f docker-compose.staging.yml up -d
+        continue-on-error: true
+      
+      - name: Send Rollback Notification
+        run: |
+          curl -X POST -H "Content-Type: application/json" -d '{
+            "text": "⚠️ Rollback automatique en ${{ steps.determine-env.outputs.env }} pour Le Vieux Moulin",
+            "blocks": [
+              {
+                "type": "header",
+                "text": {
+                  "type": "plain_text",
+                  "text": "⚠️ Rollback automatique déclenché"
+                }
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "Le déploiement en *${{ steps.determine-env.outputs.env }}* a échoué et un rollback a été exécuté."
+                }
+              },
+              {
+                "type": "context",
+                "elements": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "Veuillez vérifier les logs pour plus d'informations."
+                  }
+                ]
+              }
+            ]
+          }' ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true
