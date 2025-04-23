@@ -1,0 +1,145 @@
+name: "Dependency Review"
+
+on:
+  pull_request:
+    branches: [ main ]
+    # Exécuter uniquement sur les modifications de fichiers de dépendances
+    paths:
+      - '**/package.json'
+      - '**/package-lock.json'
+      - '**/yarn.lock'
+      - '**/requirements.txt'
+      - '**/poetry.lock'
+      - '**/Pipfile.lock'
+      - '**/pom.xml'
+      - '**/build.gradle'
+      - '**/go.mod'
+      - '**/go.sum'
+      - '**/Cargo.toml'
+      - '**/Cargo.lock'
+
+# Permissions minimales nécessaires pour cette action
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  dependency-review:
+    name: Review Dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      # Analyse de sécurité des dépendances
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v3
+        with:
+          fail-on-severity: critical
+          deny-licenses: GPL-3.0, AGPL-3.0
+          comment-summary-in-pr: true
+
+  npm-audit:
+    name: NPM Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Run NPM Audit (Frontend)
+        if: hashFiles('frontend/package.json') != ''
+        run: |
+          cd frontend
+          npm audit --json > ../frontend-audit.json || true
+          
+      - name: Run NPM Audit (Backend)
+        if: hashFiles('backend/package.json') != ''
+        run: |
+          cd backend
+          npm audit --json > ../backend-audit.json || true
+      
+      - name: Generate Audit Report
+        run: |
+          echo "## Rapport d'audit des dépendances NPM" > audit-report.md
+          echo "### Frontend" >> audit-report.md
+          echo "\`\`\`" >> audit-report.md
+          if [ -f frontend-audit.json ]; then
+            cat frontend-audit.json | jq '.vulnerabilities | length' | xargs -I{} echo "Nombre de vulnérabilités trouvées: {}" >> audit-report.md
+            cat frontend-audit.json | jq -r '.vulnerabilities | to_entries[] | "\(.key): \(.value.severity)"' >> audit-report.md
+          else
+            echo "Aucun audit disponible" >> audit-report.md
+          fi
+          echo "\`\`\`" >> audit-report.md
+          
+          echo "### Backend" >> audit-report.md
+          echo "\`\`\`" >> audit-report.md
+          if [ -f backend-audit.json ]; then
+            cat backend-audit.json | jq '.vulnerabilities | length' | xargs -I{} echo "Nombre de vulnérabilités trouvées: {}" >> audit-report.md
+            cat backend-audit.json | jq -r '.vulnerabilities | to_entries[] | "\(.key): \(.value.severity)"' >> audit-report.md
+          else
+            echo "Aucun audit disponible" >> audit-report.md
+          fi
+          echo "\`\`\`" >> audit-report.md
+      
+      - name: Upload Audit Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit-report
+          path: |
+            audit-report.md
+            frontend-audit.json
+            backend-audit.json
+          retention-days: 90
+          
+  python-audit:
+    name: Python Dependency Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install safety
+        run: pip install safety
+        
+      - name: Audit Python Dependencies
+        if: hashFiles('requirements.txt') != ''
+        run: |
+          safety check -r requirements.txt --output json > python-audit.json || true
+          
+      - name: Generate Python Audit Report
+        run: |
+          echo "## Rapport d'audit des dépendances Python" > python-audit-report.md
+          
+          echo "\`\`\`" >> python-audit-report.md
+          if [ -f python-audit.json ]; then
+            cat python-audit.json | jq '.vulnerabilities | length' | xargs -I{} echo "Nombre de vulnérabilités trouvées: {}" >> python-audit-report.md
+            cat python-audit.json | jq -r '.vulnerabilities[] | "\(.package_name) \(.vulnerable_spec): \(.advisory)"' >> python-audit-report.md
+          else
+            echo "Aucun audit disponible" >> python-audit-report.md
+          fi
+          echo "\`\`\`" >> python-audit-report.md
+          
+      - name: Upload Python Audit Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-dependency-audit-report
+          path: |
+            python-audit-report.md
+            python-audit.json
+          retention-days: 90
